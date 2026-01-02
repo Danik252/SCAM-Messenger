@@ -1,0 +1,2291 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SCAM Messenger — один файл</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    :root { color-scheme: dark; }
+    .scrollbar::-webkit-scrollbar{ width:10px; height:10px; }
+    .scrollbar::-webkit-scrollbar-thumb{ background:#2a3447; border-radius:999px; }
+    .scrollbar::-webkit-scrollbar-track{ background:#0b1020; }
+    .safe-wrap { overflow-wrap:anywhere; word-break:break-word; }
+    .ring { animation: ring 1.2s infinite; }
+    @keyframes ring { 0%{transform:translateY(0)} 10%{transform:translateY(-1px)} 20%{transform:translateY(0)} 30%{transform:translateY(-1px)} 40%{transform:translateY(0)} 50%{transform:translateY(-1px)} 60%{transform:translateY(0)} 100%{transform:translateY(0)} }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+  <div class="max-w-6xl mx-auto p-4">
+    <header class="flex items-center justify-between gap-3 mb-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-fuchsia-500 to-cyan-400 grid place-items-center font-black text-slate-900">SC</div>
+        <div>
+          <div class="text-lg font-semibold leading-tight">SCAM Messenger</div>
+          <div class="text-xs text-slate-400">Один HTML файл (демо без сервера). Чаты/аккаунты сохраняются в <span class="font-mono">localStorage</span>.</div>
+        </div>
+      </div>
+      <div id="topActions" class="hidden items-center gap-2">
+        <button id="btnAdmin" class="hidden px-3 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-sm text-amber-100">Админ</button>
+        <button id="btnProfile" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm">Профиль</button>
+        <button id="btnLogout" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm">Выйти</button>
+      </div>
+    </header>
+
+    <div id="bannerLimitations" class="mb-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100/90">
+      <div class="font-semibold">Важно (ограничения без сервера):</div>
+      <ul class="list-disc pl-5 mt-1 space-y-1 text-amber-100/80">
+        <li>Это офлайн-демо: несколько пользователей работают, если открыть сайт <span class="font-semibold">в разных вкладках/окнах</span> одного браузера (связь через <span class="font-mono">BroadcastChannel</span>).</li>
+        <li>Выложить на GitHub Pages можно, но <span class="font-semibold">между разными людьми/устройствами</span> нужны сервер(а) сигналинга/БД (иначе не будет реального онлайна).</li>
+        <li>Пароли не защищены как в настоящем сервисе (только локальная хеш-проверка).</li>
+      </ul>
+    </div>
+
+    <!-- AUTH -->
+    <section id="authView" class="grid md:grid-cols-2 gap-4">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+        <div class="text-xl font-semibold mb-1">Вход</div>
+        <div class="text-sm text-slate-400 mb-4">Войти в существующий аккаунт (в этом браузере).</div>
+        <form id="loginForm" class="space-y-3">
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Ник или ID</label>
+            <input id="loginIdentifier" class="w-full px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="например: SCAM-AB12CD или nik" required />
+          </div>
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Пароль</label>
+            <input id="loginPassword" type="password" class="w-full px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="••••••••" required />
+          </div>
+          <button class="w-full px-3 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold">Войти</button>
+          <div id="loginError" class="hidden text-sm text-rose-300"></div>
+          <div class="text-xs text-slate-500">
+            Примечание: админ-аккаунт создаётся автоматически в этом демо.
+          </div>
+        </form>
+      </div>
+
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+        <div class="text-xl font-semibold mb-1">Регистрация</div>
+        <div class="text-sm text-slate-400 mb-4">Создай новый аккаунт. Всё сохранится локально.</div>
+        <form id="registerForm" class="space-y-3">
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Ник</label>
+            <input id="regNick" class="w-full px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" placeholder="твой ник" required />
+            <div class="text-xs text-slate-500 mt-1">Ник должен быть уникальным в этом браузере.</div>
+          </div>
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Пароль</label>
+            <input id="regPassword" type="password" class="w-full px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" placeholder="придумай пароль" required />
+          </div>
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Аватар (файл с ПК, опционально)</label>
+            <input id="regAvatar" type="file" accept="image/*" class="w-full text-sm" />
+          </div>
+          <button class="w-full px-3 py-2 rounded-xl bg-fuchsia-500 hover:bg-fuchsia-400 text-slate-950 font-semibold">Создать аккаунт</button>
+          <div id="regError" class="hidden text-sm text-rose-300"></div>
+        </form>
+      </div>
+    </section>
+
+    <!-- APP -->
+    <section id="appView" class="hidden">
+      <div class="grid lg:grid-cols-[360px_1fr] gap-4">
+        <!-- Sidebar -->
+        <aside class="rounded-2xl border border-slate-800 bg-slate-900/40 p-3 flex flex-col min-h-[70vh]">
+          <div class="flex items-center gap-3 p-2 rounded-xl bg-slate-950/30 border border-slate-800">
+            <img id="meAvatar" alt="" class="w-10 h-10 rounded-xl object-cover border border-slate-700" />
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <div id="meNick" class="font-semibold truncate"></div>
+                <span id="meId" class="text-xs text-slate-400 font-mono truncate"></span>
+              </div>
+              <div class="text-xs text-slate-500">Нажми «Профиль» чтобы менять ник/аватар.</div>
+            </div>
+          </div>
+
+          <div class="mt-3">
+            <label class="text-xs text-slate-400">Поиск по нику или ID</label>
+            <div class="mt-1 flex gap-2">
+              <input id="searchInput" class="flex-1 px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="введи ник или SCAM-..." />
+              <button id="btnSearch" class="px-3 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold">Найти</button>
+              <button id="btnSearchClear" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700">×</button>
+            </div>
+            <div id="searchResults" class="mt-2 hidden rounded-xl border border-slate-800 bg-slate-950/40 overflow-hidden"></div>
+          </div>
+
+          <div class="mt-3">
+            <div class="text-xs text-slate-400 mb-2">Чаты</div>
+            <div class="space-y-2">
+              <button id="btnGlobal" class="w-full text-left px-3 py-2 rounded-xl border border-slate-800 bg-slate-950/40 hover:bg-slate-950/60">
+                <div class="flex items-center justify-between">
+                  <div class="font-semibold"># Общий чат</div>
+                  <div class="text-xs text-slate-500">без звонков</div>
+                </div>
+                <div class="text-xs text-slate-400">Тут могут писать все пользователи.</div>
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-4 flex-1 min-h-0">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs text-slate-400">Личные чаты</div>
+              <button id="btnRefreshChats" class="text-xs px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700">обновить</button>
+            </div>
+            <div id="dmList" class="space-y-2 overflow-auto scrollbar pr-1 max-h-[45vh]"></div>
+          </div>
+
+          <div class="mt-3 text-xs text-slate-500">
+            Подсказка: открой сайт в двух вкладках, создай два аккаунта и пообщайся/позвони.
+          </div>
+        </aside>
+
+        <!-- Chat -->
+        <main class="rounded-2xl border border-slate-800 bg-slate-900/40 p-3 flex flex-col min-h-[70vh]">
+          <div class="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-950/30 border border-slate-800">
+            <div class="flex items-center gap-3 min-w-0">
+              <img id="chatAvatar" alt="" class="w-10 h-10 rounded-xl object-cover border border-slate-700" />
+              <div class="min-w-0">
+                <div id="chatTitle" class="font-semibold truncate"># Общий чат</div>
+                <div id="chatSubtitle" class="text-xs text-slate-400 truncate">Здесь могут общаться все пользователи</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="btnCall" class="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold disabled:opacity-40 disabled:cursor-not-allowed">Звонок</button>
+              <button id="btnHangup" class="hidden px-3 py-2 rounded-xl bg-rose-500 hover:bg-rose-400 text-slate-950 font-semibold">Сбросить</button>
+            </div>
+          </div>
+
+          <div id="messages" class="mt-3 flex-1 min-h-0 overflow-auto scrollbar pr-1 space-y-2"></div>
+
+          <div class="mt-3">
+            <div id="composerNotice" class="hidden mb-2 text-xs rounded-xl border border-amber-500/30 bg-amber-500/10 p-2 text-amber-100/80"></div>
+            <div class="flex items-end gap-2">
+              <button id="btnEmoji" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700">😊</button>
+              <textarea id="msgInput" rows="1" class="flex-1 px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500 resize-none scrollbar" placeholder="Напиши сообщение..."></textarea>
+              <button id="btnSend" class="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold">Отправить</button>
+            </div>
+            <div class="mt-2 text-xs text-slate-500">В общий чат звонить нельзя. Себе писать нельзя (в личке).</div>
+          </div>
+        </main>
+      </div>
+    </section>
+  </div>
+
+  <!-- EMOJI POPOVER -->
+  <div id="emojiPopover" class="hidden fixed inset-0">
+    <div class="absolute inset-0 bg-black/60" data-close="emoji"></div>
+    <div class="absolute bottom-6 left-1/2 -translate-x-1/2 w-[min(560px,92vw)] rounded-2xl border border-slate-800 bg-slate-900 p-3">
+      <div class="flex items-center justify-between mb-2">
+        <div class="font-semibold">Эмодзи</div>
+        <button class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700" data-close="emoji">Закрыть</button>
+      </div>
+      <div id="emojiGrid" class="grid grid-cols-10 sm:grid-cols-12 gap-2"></div>
+    </div>
+  </div>
+
+  <!-- PROFILE MODAL -->
+  <div id="profileModal" class="hidden fixed inset-0">
+    <div class="absolute inset-0 bg-black/60" data-close="profile"></div>
+    <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(680px,92vw)] rounded-2xl border border-slate-800 bg-slate-900 p-4">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="text-xl font-semibold">Профиль</div>
+          <div class="text-sm text-slate-400">Меняй ник/аватар. Твой ID нужен чтобы тебя нашли.</div>
+        </div>
+        <button class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700" data-close="profile">Закрыть</button>
+      </div>
+
+      <div class="mt-4 grid md:grid-cols-[160px_1fr] gap-4">
+        <div class="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+          <img id="profileAvatar" class="w-full aspect-square rounded-2xl object-cover border border-slate-700" alt="" />
+          <div class="mt-2">
+            <input id="profileAvatarFile" type="file" accept="image/*" class="w-full text-sm" />
+          </div>
+          <button id="btnRemoveAvatar" class="mt-2 w-full px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm">Сбросить аватар</button>
+        </div>
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+          <div class="grid gap-3">
+            <div>
+              <label class="block text-sm text-slate-300 mb-1">Ник</label>
+              <input id="profileNick" class="w-full px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
+              <div class="text-xs text-slate-500 mt-1">Ник должен быть уникальным.</div>
+            </div>
+            <div>
+              <label class="block text-sm text-slate-300 mb-1">ID (по нему тебя найдут)</label>
+              <div class="flex gap-2">
+                <input id="profileId" readonly class="flex-1 px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800 font-mono text-sm" />
+                <button id="btnCopyId" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm">Копировать</button>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <button id="btnSaveProfile" class="px-3 py-2 rounded-xl bg-fuchsia-500 hover:bg-fuchsia-400 text-slate-950 font-semibold">Сохранить</button>
+              <button id="btnCancelProfile" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700">Отмена</button>
+            </div>
+            <div id="profileError" class="hidden text-sm text-rose-300"></div>
+            <div class="text-xs text-slate-500">
+              Примечание: если откроешь сайт в другой вкладке и войдёшь другим пользователем — можно будет найти тебя по нику/ID.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ADMIN MODAL -->
+  <div id="adminModal" class="hidden fixed inset-0">
+    <div class="absolute inset-0 bg-black/60" data-close="admin"></div>
+    <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(760px,92vw)] rounded-2xl border border-slate-800 bg-slate-900 p-4">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="text-xl font-semibold">Панель управления</div>
+          <div id="adminSubtitle" class="text-sm text-slate-400">Для модераторов и админов. Мут/бан действуют только в «# Общем чате».</div>
+        </div>
+        <button class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700" data-close="admin">Закрыть</button>
+      </div>
+
+      <div class="mt-4 grid gap-4">
+        <div class="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+          <div class="font-semibold">Статистика</div>
+          <div id="adminStats" class="mt-2 text-sm text-slate-300"></div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+          <div class="flex items-center justify-between gap-2">
+            <div class="font-semibold">Пост в общий чат</div>
+            <span id="postRightsBadge" class="text-[11px] px-2 py-1 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-100/90 hidden">доступно</span>
+          </div>
+          <div class="mt-2 grid gap-2">
+            <input id="postTitle" class="w-full px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="Заголовок (опционально)" />
+            <textarea id="postBody" rows="3" class="w-full px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 scrollbar" placeholder="Текст поста..."></textarea>
+            <div class="flex items-center justify-end gap-2">
+              <button id="btnSendPost" class="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold">Опубликовать</button>
+            </div>
+            <div class="text-xs text-slate-500">Пост будет виден всем в «# Общий чат». Нажатие на ник в общем чате открывает личку.</div>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+          <div class="flex items-center justify-between gap-2">
+            <div class="font-semibold">Модерация общего чата</div>
+            <span id="modRightsBadge" class="text-[11px] px-2 py-1 rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-cyan-100/90 hidden">доступно</span>
+          </div>
+          <div class="mt-2 flex flex-col sm:flex-row gap-2">
+            <input id="modFilter" class="flex-1 px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="Поиск пользователя (ник или ID)…" />
+            <button id="btnRefreshMod" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700">Обновить</button>
+          </div>
+          <div id="modUsersList" class="mt-2 rounded-xl border border-slate-800 bg-slate-950/30 overflow-auto scrollbar max-h-[44vh]"></div>
+          <div class="mt-2 text-xs text-slate-500">Мут запрещает писать в «# Общий чат» на время. Бан запрещает писать в «# Общий чат» полностью. Лички/звонки не затрагиваются.</div>
+        </div>
+
+        <div id="createAccountSection" class="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+          <div class="font-semibold">Создать аккаунт (админ)</div>
+          <div class="mt-2 grid gap-2">
+            <div class="grid sm:grid-cols-2 gap-2">
+              <input id="createNick" class="w-full px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" placeholder="Ник" />
+              <input id="createPass" type="password" class="w-full px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" placeholder="Пароль" />
+            </div>
+            <div class="grid sm:grid-cols-[1fr_auto] gap-2">
+              <select id="createRole" class="w-full px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-fuchsia-500">
+                <option value="user">нет (обычный пользователь)</option>
+                <option value="mod">модератор (пост, мут)</option>
+                <option value="admin">админ (пост, мут, бан)</option>
+              </select>
+              <button id="btnCreateAccount" class="px-3 py-2 rounded-xl bg-fuchsia-500 hover:bg-fuchsia-400 text-slate-950 font-semibold">Создать</button>
+            </div>
+            <div id="createAccountError" class="hidden text-sm text-rose-300"></div>
+            <div class="text-xs text-slate-500">Аккаунт появится в этом браузере/вкладках (localStorage).</div>
+          </div>
+        </div>
+
+        <div id="adminOnlyActions" class="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+          <div class="font-semibold">Админ-действия</div>
+          <div class="mt-2 flex flex-wrap gap-2">
+            <button id="btnExport" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm">Экспорт данных (JSON)</button>
+            <button id="btnWipeAll" class="px-3 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-sm text-rose-100">Сбросить всё</button>
+          </div>
+          <div class="mt-2 text-xs text-slate-500">Сброс удалит все аккаунты/чаты этого демо в этом браузере (и во всех вкладках).</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INCOMING CALL MODAL -->
+  <div id="incomingCallModal" class="hidden fixed inset-0">
+    <div class="absolute inset-0 bg-black/70"></div>
+    <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(520px,92vw)] rounded-2xl border border-slate-800 bg-slate-900 p-4">
+      <div class="flex items-center gap-3">
+        <img id="incomingAvatar" class="w-12 h-12 rounded-2xl object-cover border border-slate-700" alt="" />
+        <div class="min-w-0">
+          <div class="text-lg font-semibold ring" id="incomingTitle">Входящий звонок…</div>
+          <div class="text-sm text-slate-400 truncate" id="incomingSubtitle"></div>
+        </div>
+      </div>
+      <div class="mt-4 flex gap-2 justify-end">
+        <button id="btnDecline" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700">Отклонить</button>
+        <button id="btnAccept" class="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold">Принять</button>
+      </div>
+      <div class="mt-3 text-xs text-slate-500">При принятии браузер спросит разрешение на микрофон/камеру.</div>
+    </div>
+  </div>
+
+  <!-- CALL OVERLAY -->
+  <div id="callOverlay" class="hidden fixed inset-x-0 bottom-0 p-3">
+    <div class="max-w-6xl mx-auto rounded-2xl border border-slate-800 bg-slate-950/90 backdrop-blur p-3">
+      <div class="flex items-center justify-between gap-3">
+        <div class="min-w-0">
+          <div class="font-semibold truncate" id="callWith">Звонок</div>
+          <div class="text-xs text-slate-400" id="callStatus">Подключение…</div>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap justify-end">
+          <button id="btnToggleMic" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm">Микрофон: ВКЛ</button>
+          <button id="btnToggleCam" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm">Камера: ВКЛ</button>
+          <button id="btnToggleScreen" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm">Экран: ВЫКЛ</button>
+          <button id="btnHangup2" class="px-3 py-2 rounded-xl bg-rose-500 hover:bg-rose-400 text-slate-950 font-semibold">Сбросить</button>
+        </div>
+      </div>
+      <div class="mt-3 grid md:grid-cols-2 gap-3">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/30 p-2">
+          <div class="text-xs text-slate-400 mb-1">Удалённое видео</div>
+          <video id="remoteVideo" autoplay playsinline class="w-full aspect-video bg-black rounded-xl"></video>
+        </div>
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/30 p-2">
+          <div class="text-xs text-slate-400 mb-1">Твоё видео</div>
+          <video id="localVideo" autoplay muted playsinline class="w-full aspect-video bg-black rounded-xl"></video>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================
+    // Storage keys
+    // =========================
+    const K_USERS = 'scam_users_v1';
+    const K_SESSION = 'scam_session_v1';
+    const K_GLOBAL = 'scam_global_messages_v1';
+    const K_LAST_BROADCAST = 'scam_broadcast_last_v1';
+    const K_MOD = 'scam_mod_v1'; // moderation state for global chat
+
+    // =========================
+    // Built-in admin account
+    // =========================
+    const ADMIN_NICK = 'SCAM_OFFICIAL';
+    const ADMIN_ID = 'SCAM-OFFICIAL';
+    // Password requested: VERY complex, 7 symbols.
+    // Keep it here for demo purposes.
+    const ADMIN_PASS = 'X9!qT7@';
+
+    // =========================
+    // Utilities
+    // =========================
+    const $ = (sel) => document.querySelector(sel);
+    const escapeHtml = (s) => (s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const now = () => Date.now();
+    const fmtTime = (ts) => {
+      const d = new Date(ts);
+      const hh = String(d.getHours()).padStart(2,'0');
+      const mm = String(d.getMinutes()).padStart(2,'0');
+      return `${hh}:${mm}`;
+    };
+    const randomId = () => {
+      const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let s = '';
+      for (let i=0;i<8;i++) s += alphabet[Math.floor(Math.random()*alphabet.length)];
+      return 'SCAM-' + s;
+    };
+    const sortPair = (a,b) => [a,b].sort().join('_');
+    const dmKey = (a,b) => `scam_dm_v1_${sortPair(a,b)}`;
+
+    function loadJson(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch { return fallback; }
+    }
+
+    function notifyStorageError(err) {
+      console.warn('localStorage error:', err);
+      try {
+        window.__scamMessengerToast?.('Память браузера (localStorage) переполнена или недоступна. Уменьши аватары/очисти данные сайта.', 'error');
+      } catch {}
+    }
+
+    function saveJson(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+        return true;
+      } catch (err) {
+        notifyStorageError(err);
+        return false;
+      }
+    }
+
+    function loadUsers() {
+      return loadJson(K_USERS, []);
+    }
+    function saveUsers(users) {
+      saveJson(K_USERS, users);
+    }
+    function getUserById(id) {
+      return loadUsers().find(u => u.id === id) || null;
+    }
+    function getUserByNick(nick) {
+      const n = (nick||'').trim().toLowerCase();
+      return loadUsers().find(u => (u.nick||'').toLowerCase() === n) || null;
+    }
+
+    // =========================
+    // Roles & moderation
+    // =========================
+    // role: 'user' | 'mod' | 'admin'
+    function roleOf(u) {
+      if (!u) return 'user';
+      if (u.isAdmin) return 'admin';
+      return u.role || 'user';
+    }
+    function canPost(u) {
+      const r = roleOf(u);
+      return r === 'mod' || r === 'admin';
+    }
+    function canMute(u) {
+      const r = roleOf(u);
+      return r === 'mod' || r === 'admin';
+    }
+    function canBan(u) {
+      const r = roleOf(u);
+      return r === 'admin';
+    }
+    function canCreateAccounts(u) {
+      return roleOf(u) === 'admin';
+    }
+
+    function loadModState() {
+      return loadJson(K_MOD, { mutes: {}, bans: {} });
+    }
+    function saveModState(st) {
+      return saveJson(K_MOD, st);
+    }
+
+    function isBannedInGlobal(userId) {
+      const st = loadModState();
+      return !!st.bans?.[userId];
+    }
+    function muteInfo(userId) {
+      const st = loadModState();
+      const m = st.mutes?.[userId];
+      if (!m) return { muted: false, until: null, reason: '' };
+      const until = m.until || null;
+      if (until && now() > until) {
+        // auto-expire
+        try {
+          delete st.mutes[userId];
+          saveModState(st);
+        } catch {}
+        return { muted: false, until: null, reason: '' };
+      }
+      return { muted: true, until, reason: m.reason || '' };
+    }
+
+    function fmtDuration(ms) {
+      if (ms <= 0) return '0м';
+      const totalSec = Math.ceil(ms/1000);
+      const m = Math.floor(totalSec/60);
+      const s = totalSec % 60;
+      if (m <= 0) return `${s}с`;
+      return `${m}м ${String(s).padStart(2,'0')}с`;
+    }
+
+    function canSendToGlobal(userId) {
+      if (isBannedInGlobal(userId)) return { ok: false, reason: 'Вы забанены в общем чате.' };
+      const mi = muteInfo(userId);
+      if (mi.muted) {
+        const left = mi.until ? fmtDuration(mi.until - now()) : '∞';
+        return { ok: false, reason: `Вы в муте в общем чате (${left}).` };
+      }
+      return { ok: true, reason: '' };
+    }
+
+    function defaultAvatarDataUrl(seed) {
+      const bg = ['#22c55e','#06b6d4','#a855f7','#f97316','#e11d48','#eab308'][Math.abs(hashCode(seed)) % 6];
+      const fg = '#0b1020';
+      const initials = (seed||'SC').trim().slice(0,2).toUpperCase();
+      const svg = `<?xml version="1.0" encoding="UTF-8"?>
+      <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">
+        <defs>
+          <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="${bg}" stop-opacity="1"/>
+            <stop offset="1" stop-color="#38bdf8" stop-opacity="0.65"/>
+          </linearGradient>
+        </defs>
+        <rect width="256" height="256" rx="48" fill="url(#g)"/>
+        <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-family="ui-sans-serif, system-ui" font-weight="800" font-size="88" fill="${fg}">${escapeHtml(initials)}</text>
+      </svg>`;
+      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    }
+    function hashCode(str) {
+      let h = 0;
+      for (let i=0;i<str.length;i++) h = ((h<<5)-h) + str.charCodeAt(i), h |= 0;
+      return h;
+    }
+
+    async function sha256Base64(text) {
+      const enc = new TextEncoder().encode(text);
+      const buf = await crypto.subtle.digest('SHA-256', enc);
+      const bytes = new Uint8Array(buf);
+      let bin = '';
+      for (const b of bytes) bin += String.fromCharCode(b);
+      return btoa(bin);
+    }
+
+    async function fileToDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+    }
+
+    function toast(msg, type='info') {
+      const el = document.createElement('div');
+      el.className = `fixed z-50 left-1/2 -translate-x-1/2 top-4 px-3 py-2 rounded-xl border text-sm shadow-lg ${type==='error' ? 'bg-rose-500/15 border-rose-500/30 text-rose-100' : 'bg-slate-900 border-slate-700 text-slate-100'}`;
+      el.textContent = msg;
+      document.body.appendChild(el);
+      setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .25s'; }, 2400);
+      setTimeout(() => el.remove(), 2800);
+    }
+    window.__scamMessengerToast = toast;
+
+    // =========================
+    // Broadcast (tabs) — BroadcastChannel + localStorage event fallback
+    // =========================
+    const BC_NAME = 'scam_messenger_bc_v1';
+    const bc = ('BroadcastChannel' in window) ? new BroadcastChannel(BC_NAME) : null;
+    function broadcast(payload) {
+      const msg = { ...payload, _ts: now(), _nonce: Math.random().toString(36).slice(2) };
+      if (bc) bc.postMessage(msg);
+      localStorage.setItem(K_LAST_BROADCAST, JSON.stringify(msg));
+    }
+
+    function onBroadcast(msg) {
+      if (!msg || msg._seenBy === state.user?.id) return;
+      handleBroadcast(msg);
+    }
+
+    if (bc) bc.onmessage = (e) => onBroadcast(e.data);
+    window.addEventListener('storage', (e) => {
+      if (e.key === K_LAST_BROADCAST && e.newValue) {
+        try { onBroadcast(JSON.parse(e.newValue)); } catch {}
+      }
+    });
+
+    // =========================
+    // App state
+    // =========================
+    const state = {
+      user: null,
+      activeChat: { type: 'global', peerId: null },
+      pendingCall: null,
+      call: {
+        inCall: false,
+        outgoing: false,
+        peerId: null,
+        pc: null,
+        localStream: null,
+        remoteStream: null,
+        screenStream: null,
+        micOn: true,
+        camOn: true,
+        screenOn: false,
+        iceQueue: [],
+        remoteDescSet: false,
+      }
+    };
+
+    // =========================
+    // Messages persistence
+    // =========================
+    function loadGlobalMessages() {
+      return loadJson(K_GLOBAL, []);
+    }
+    function saveGlobalMessages(msgs) {
+      return saveJson(K_GLOBAL, msgs);
+    }
+    function loadDmMessages(myId, peerId) {
+      return loadJson(dmKey(myId, peerId), []);
+    }
+    function saveDmMessages(myId, peerId, msgs) {
+      return saveJson(dmKey(myId, peerId), msgs);
+    }
+
+    // =========================
+    // DOM references
+    // =========================
+    const authView = $('#authView');
+    const appView = $('#appView');
+    const topActions = $('#topActions');
+
+    const loginForm = $('#loginForm');
+    const loginIdentifier = $('#loginIdentifier');
+    const loginPassword = $('#loginPassword');
+    const loginError = $('#loginError');
+
+    const registerForm = $('#registerForm');
+    const regNick = $('#regNick');
+    const regPassword = $('#regPassword');
+    const regAvatar = $('#regAvatar');
+    const regError = $('#regError');
+
+    const meAvatar = $('#meAvatar');
+    const meNick = $('#meNick');
+    const meId = $('#meId');
+
+    const searchInput = $('#searchInput');
+    const btnSearch = $('#btnSearch');
+    const btnSearchClear = $('#btnSearchClear');
+    const searchResults = $('#searchResults');
+
+    const btnGlobal = $('#btnGlobal');
+    const dmList = $('#dmList');
+    const btnRefreshChats = $('#btnRefreshChats');
+
+    const chatAvatar = $('#chatAvatar');
+    const chatTitle = $('#chatTitle');
+    const chatSubtitle = $('#chatSubtitle');
+
+    const messagesEl = $('#messages');
+    const msgInput = $('#msgInput');
+    const btnSend = $('#btnSend');
+    const btnEmoji = $('#btnEmoji');
+    const composerNotice = $('#composerNotice');
+
+    const emojiPopover = $('#emojiPopover');
+    const emojiGrid = $('#emojiGrid');
+
+    const btnAdmin = $('#btnAdmin');
+    const btnProfile = $('#btnProfile');
+    const btnLogout = $('#btnLogout');
+
+    const profileModal = $('#profileModal');
+    const profileAvatar = $('#profileAvatar');
+    const profileAvatarFile = $('#profileAvatarFile');
+    const btnRemoveAvatar = $('#btnRemoveAvatar');
+    const profileNick = $('#profileNick');
+    const profileId = $('#profileId');
+    const btnCopyId = $('#btnCopyId');
+    const btnSaveProfile = $('#btnSaveProfile');
+    const btnCancelProfile = $('#btnCancelProfile');
+    const profileError = $('#profileError');
+
+    const adminModal = $('#adminModal');
+    const adminStats = $('#adminStats');
+    const adminSubtitle = $('#adminSubtitle');
+    const postRightsBadge = $('#postRightsBadge');
+    const modRightsBadge = $('#modRightsBadge');
+
+    const postTitle = $('#postTitle');
+    const postBody = $('#postBody');
+    const btnSendPost = $('#btnSendPost');
+
+    const modFilter = $('#modFilter');
+    const btnRefreshMod = $('#btnRefreshMod');
+    const modUsersList = $('#modUsersList');
+
+    const createAccountSection = $('#createAccountSection');
+    const createNick = $('#createNick');
+    const createPass = $('#createPass');
+    const createRole = $('#createRole');
+    const btnCreateAccount = $('#btnCreateAccount');
+    const createAccountError = $('#createAccountError');
+
+    const adminOnlyActions = $('#adminOnlyActions');
+    const btnWipeAll = $('#btnWipeAll');
+    const btnExport = $('#btnExport');
+
+    const btnCall = $('#btnCall');
+    const btnHangup = $('#btnHangup');
+
+    const incomingCallModal = $('#incomingCallModal');
+    const incomingAvatar = $('#incomingAvatar');
+    const incomingTitle = $('#incomingTitle');
+    const incomingSubtitle = $('#incomingSubtitle');
+    const btnDecline = $('#btnDecline');
+    const btnAccept = $('#btnAccept');
+
+    const callOverlay = $('#callOverlay');
+    const callWith = $('#callWith');
+    const callStatus = $('#callStatus');
+    const btnToggleMic = $('#btnToggleMic');
+    const btnToggleCam = $('#btnToggleCam');
+    const btnToggleScreen = $('#btnToggleScreen');
+    const btnHangup2 = $('#btnHangup2');
+    const remoteVideo = $('#remoteVideo');
+    const localVideo = $('#localVideo');
+
+    // =========================
+    // Emoji setup
+    // =========================
+    const EMOJIS = [
+      '😀','😁','😂','🤣','😅','😊','😍','😘','😎','🤩','🥳','😴',
+      '😡','🥶','🤯','😭','😱','🤔','🙃','😇','🤡','💀','👻','🤖',
+      '👍','👎','🙏','👏','🤝','💪','🔥','💥','✨','🌈','🎉','💯',
+      '❤️','💔','💕','😺','😸','🙈','🙉','🙊','🍕','🍔','🍟','☕',
+      '⚡','🎧','🎮','📞','📷','🎥','🧠','🧩','🗿','🫡','🫶','🧨'
+    ];
+    function renderEmojiGrid() {
+      emojiGrid.innerHTML = '';
+      for (const e of EMOJIS) {
+        const b = document.createElement('button');
+        b.className = 'text-xl p-2 rounded-xl bg-slate-950/40 hover:bg-slate-950/70 border border-slate-800';
+        b.textContent = e;
+        b.addEventListener('click', () => {
+          insertAtCursor(msgInput, e);
+          hideEmoji();
+          msgInput.focus();
+        });
+        emojiGrid.appendChild(b);
+      }
+    }
+    function insertAtCursor(textarea, text) {
+      const start = textarea.selectionStart ?? textarea.value.length;
+      const end = textarea.selectionEnd ?? textarea.value.length;
+      textarea.value = textarea.value.slice(0,start) + text + textarea.value.slice(end);
+      const pos = start + text.length;
+      textarea.selectionStart = textarea.selectionEnd = pos;
+      autoGrow(textarea);
+    }
+
+    function showEmoji() { emojiPopover.classList.remove('hidden'); }
+    function hideEmoji() { emojiPopover.classList.add('hidden'); }
+
+    // =========================
+    // Rendering
+    // =========================
+    function setComposerNotice(text) {
+      if (!text) {
+        composerNotice.classList.add('hidden');
+        composerNotice.textContent = '';
+        return;
+      }
+      composerNotice.textContent = text;
+      composerNotice.classList.remove('hidden');
+    }
+
+    function updateRoleUi() {
+      if (!state.user) {
+        btnAdmin.classList.add('hidden');
+        return;
+      }
+      // Panel is for mod/admin
+      if (canPost(state.user) || canMute(state.user) || canBan(state.user) || canCreateAccounts(state.user)) {
+        btnAdmin.classList.remove('hidden');
+      } else {
+        btnAdmin.classList.add('hidden');
+      }
+    }
+
+    function renderMe() {
+      const u = state.user;
+      meAvatar.src = u.avatar || defaultAvatarDataUrl(u.nick || u.id);
+      meNick.textContent = u.nick;
+      meId.textContent = u.id;
+      updateRoleUi();
+    }
+
+    function getActiveChatInfo() {
+      if (state.activeChat.type === 'global') {
+        return { title: '# Общий чат', subtitle: 'Здесь могут общаться все пользователи', avatar: defaultAvatarDataUrl('#') };
+      }
+      const peer = getUserById(state.activeChat.peerId);
+      if (!peer) {
+        return { title: 'Пользователь не найден', subtitle: 'Возможно, его удалили', avatar: defaultAvatarDataUrl('?') };
+      }
+      return { title: peer.nick, subtitle: peer.id, avatar: peer.avatar || defaultAvatarDataUrl(peer.nick) };
+    }
+
+    function renderChatHeader() {
+      const info = getActiveChatInfo();
+      chatTitle.textContent = info.title;
+      chatSubtitle.textContent = info.subtitle;
+      chatAvatar.src = info.avatar;
+
+      const isGlobal = state.activeChat.type === 'global';
+      btnCall.disabled = isGlobal || !state.activeChat.peerId || state.activeChat.peerId === state.user.id;
+      if (isGlobal) {
+        setComposerNotice('Общий чат: звонки запрещены.');
+      } else {
+        setComposerNotice(null);
+      }
+    }
+
+    function renderMessages() {
+      messagesEl.innerHTML = '';
+      const myId = state.user.id;
+      let msgs = [];
+      if (state.activeChat.type === 'global') {
+        msgs = loadGlobalMessages();
+      } else {
+        msgs = loadDmMessages(myId, state.activeChat.peerId);
+      }
+
+      for (const m of msgs) {
+        const fromUser = getUserById(m.from);
+        const isMe = m.from === myId;
+        const isPost = m.kind === 'post' && m.chatType === 'global';
+
+        const wrap = document.createElement('div');
+        wrap.className = `flex gap-2 ${isMe ? 'justify-end' : 'justify-start'}`;
+
+        const bubble = document.createElement('div');
+        const base = `max-w-[85%] rounded-2xl border p-2`;
+        if (isPost) {
+          bubble.className = `${base} bg-amber-500/10 border-amber-500/30`;
+        } else {
+          bubble.className = `${base} ${isMe ? 'bg-cyan-500/15 border-cyan-500/30' : 'bg-slate-950/40 border-slate-800'}`;
+        }
+
+        const top = document.createElement('div');
+        top.className = 'flex items-center justify-between gap-2 mb-1';
+
+        const nameBtn = document.createElement('button');
+        nameBtn.className = `text-xs font-semibold ${isMe ? 'text-cyan-200' : 'text-slate-200'} hover:underline truncate`;
+        nameBtn.textContent = fromUser ? fromUser.nick : 'Unknown';
+        nameBtn.title = fromUser ? `${fromUser.nick} (${fromUser.id})` : 'Unknown';
+        nameBtn.dataset.userid = m.from;
+        nameBtn.dataset.action = 'openUserChatFromMessage';
+
+        const time = document.createElement('div');
+        time.className = 'text-[11px] text-slate-400 shrink-0';
+        time.textContent = fmtTime(m.ts);
+
+        top.appendChild(nameBtn);
+        top.appendChild(time);
+
+        const text = document.createElement('div');
+        text.className = 'text-sm safe-wrap whitespace-pre-wrap';
+
+        if (isPost) {
+          const t = (m.postTitle || '').trim();
+          text.innerHTML = `
+            <div class="text-[11px] uppercase tracking-wide text-amber-200/90 font-semibold mb-1">Пост</div>
+            ${t ? `<div class="font-semibold text-amber-100 mb-1">${escapeHtml(t)}</div>` : ''}
+            <div>${escapeHtml(m.text)}</div>
+          `;
+        } else {
+          text.textContent = m.text;
+        }
+
+        bubble.appendChild(top);
+        bubble.appendChild(text);
+
+        if (!isMe) {
+          const ava = document.createElement('img');
+          ava.className = 'w-8 h-8 rounded-xl object-cover border border-slate-700 mt-auto';
+          ava.src = (fromUser?.avatar) || defaultAvatarDataUrl(fromUser?.nick || '??');
+          wrap.appendChild(ava);
+          wrap.appendChild(bubble);
+        } else {
+          wrap.appendChild(bubble);
+        }
+
+        messagesEl.appendChild(wrap);
+      }
+
+      scrollMessagesToBottom();
+    }
+
+    function scrollMessagesToBottom() {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function findDmPeersForUser(myId) {
+      const peers = new Set();
+      for (let i=0;i<localStorage.length;i++) {
+        const k = localStorage.key(i);
+        if (!k || !k.startsWith('scam_dm_v1_')) continue;
+        const pair = k.replace('scam_dm_v1_','');
+        const [a,b] = pair.split('_');
+        if (a === myId && b) peers.add(b);
+        if (b === myId && a) peers.add(a);
+      }
+      return [...peers];
+    }
+
+    function lastMessagePreview(msgs) {
+      if (!msgs?.length) return '';
+      const m = msgs[msgs.length-1];
+      const u = getUserById(m.from);
+      const who = u ? u.nick : 'Unknown';
+      const text = (m.kind === 'post') ? '[POST]' : (m.text || '');
+      return `${who}: ${text}`.slice(0, 70);
+    }
+
+    function renderDmList() {
+      const myId = state.user.id;
+      const peers = findDmPeersForUser(myId)
+        .map(id => getUserById(id))
+        .filter(Boolean)
+        .sort((a,b) => (a.nick||'').localeCompare(b.nick||''));
+
+      dmList.innerHTML = '';
+
+      if (!peers.length) {
+        const empty = document.createElement('div');
+        empty.className = 'text-sm text-slate-500 p-3 rounded-xl border border-slate-800 bg-slate-950/30';
+        empty.textContent = 'Личных чатов пока нет. Найди пользователя по нику/ID и открой чат.';
+        dmList.appendChild(empty);
+        return;
+      }
+
+      for (const peer of peers) {
+        const btn = document.createElement('button');
+        btn.className = `w-full text-left px-3 py-2 rounded-xl border ${state.activeChat.type==='dm' && state.activeChat.peerId===peer.id ? 'border-cyan-500/40 bg-cyan-500/10' : 'border-slate-800 bg-slate-950/30 hover:bg-slate-950/50'}`;
+        btn.dataset.peer = peer.id;
+
+        const msgs = loadDmMessages(myId, peer.id);
+
+        btn.innerHTML = `
+          <div class="flex items-center gap-3">
+            <img class="w-10 h-10 rounded-xl object-cover border border-slate-700" src="${peer.avatar || defaultAvatarDataUrl(peer.nick)}" alt="" />
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center justify-between gap-2">
+                <div class="font-semibold truncate">${escapeHtml(peer.nick)}</div>
+                <div class="text-[11px] text-slate-500 font-mono truncate">${escapeHtml(peer.id)}</div>
+              </div>
+              <div class="text-xs text-slate-400 truncate">${escapeHtml(lastMessagePreview(msgs))}</div>
+            </div>
+          </div>
+        `;
+        btn.addEventListener('click', () => openDm(peer.id));
+        dmList.appendChild(btn);
+      }
+    }
+
+    function renderSearchResults(items) {
+      if (!items.length) {
+        searchResults.innerHTML = '<div class="p-3 text-sm text-slate-400">Ничего не найдено.</div>';
+        searchResults.classList.remove('hidden');
+        return;
+      }
+      searchResults.innerHTML = '';
+      for (const u of items) {
+        const row = document.createElement('button');
+        row.className = 'w-full text-left px-3 py-2 hover:bg-slate-800/50 flex items-center gap-3';
+        row.innerHTML = `
+          <img class="w-9 h-9 rounded-xl object-cover border border-slate-700" src="${u.avatar || defaultAvatarDataUrl(u.nick)}" alt="" />
+          <div class="min-w-0">
+            <div class="font-semibold truncate">${escapeHtml(u.nick)}</div>
+            <div class="text-xs text-slate-500 font-mono truncate">${escapeHtml(u.id)}</div>
+          </div>
+        `;
+        row.addEventListener('click', () => {
+          searchResults.classList.add('hidden');
+          searchInput.value = '';
+          openDm(u.id);
+        });
+        searchResults.appendChild(row);
+      }
+      searchResults.classList.remove('hidden');
+    }
+
+    function renderAll() {
+      renderMe();
+      renderChatHeader();
+      renderMessages();
+      renderDmList();
+    }
+
+    // =========================
+    // Auth
+    // =========================
+    function setAuthError(el, text) {
+      if (!text) { el.classList.add('hidden'); el.textContent=''; return; }
+      el.textContent = text;
+      el.classList.remove('hidden');
+    }
+
+    async function ensureAdminAccount() {
+      const users = loadUsers();
+      let changed = false;
+
+      let u = users.find(x => x.id === ADMIN_ID) || users.find(x => (x.nick||'').toLowerCase() === ADMIN_NICK.toLowerCase());
+      if (u) {
+        if (u.id !== ADMIN_ID) { u.id = ADMIN_ID; changed = true; }
+        if (u.role !== 'admin') { u.role = 'admin'; changed = true; }
+        if (!u.isAdmin) { u.isAdmin = true; changed = true; }
+        if (!u.avatar) { u.avatar = defaultAvatarDataUrl(ADMIN_NICK); changed = true; }
+        if (changed) saveUsers(users);
+        return;
+      }
+
+      const passHash = await sha256Base64(`${ADMIN_NICK}:${ADMIN_PASS}`);
+      u = {
+        id: ADMIN_ID,
+        nick: ADMIN_NICK,
+        passHash,
+        avatar: defaultAvatarDataUrl(ADMIN_NICK),
+        role: 'admin',
+        isAdmin: true,
+        createdAt: now(),
+        updatedAt: now()
+      };
+      users.push(u);
+      saveUsers(users);
+    }
+
+    async function register(nick, pass, avatarDataUrl) {
+      nick = (nick||'').trim();
+      if (nick.length < 2) throw new Error('Ник слишком короткий (минимум 2 символа).');
+      if (nick.toLowerCase() === ADMIN_NICK.toLowerCase()) throw new Error('Этот ник зарезервирован.');
+
+      const users = loadUsers();
+      if (users.some(u => (u.nick||'').toLowerCase() === nick.toLowerCase())) throw new Error('Этот ник уже занят.');
+
+      const id = randomId();
+      const passHash = await sha256Base64(`${nick}:${pass}`);
+      const u = {
+        id,
+        nick,
+        passHash,
+        avatar: avatarDataUrl || defaultAvatarDataUrl(nick),
+        role: 'user',
+        isAdmin: false,
+        createdAt: now(),
+        updatedAt: now()
+      };
+      users.push(u);
+      saveUsers(users);
+      broadcast({ type: 'user:created', userId: id });
+      return u;
+    }
+
+    async function login(identifier, pass) {
+      identifier = (identifier||'').trim();
+      const users = loadUsers();
+      let u = users.find(x => x.id === identifier) || users.find(x => (x.nick||'').toLowerCase() === identifier.toLowerCase());
+      if (!u) throw new Error('Пользователь не найден.');
+      const passHash = await sha256Base64(`${u.nick}:${pass}`);
+      if (passHash !== u.passHash) throw new Error('Неверный пароль.');
+      return u;
+    }
+
+    function setSession(userId) {
+      saveJson(K_SESSION, { userId, ts: now() });
+    }
+    function clearSession() {
+      localStorage.removeItem(K_SESSION);
+    }
+    function loadSession() {
+      return loadJson(K_SESSION, null);
+    }
+
+    function showApp() {
+      authView.classList.add('hidden');
+      appView.classList.remove('hidden');
+      topActions.classList.remove('hidden');
+      topActions.classList.add('flex');
+    }
+    function showAuth() {
+      authView.classList.remove('hidden');
+      appView.classList.add('hidden');
+      topActions.classList.add('hidden');
+      topActions.classList.remove('flex');
+    }
+
+    // =========================
+    // Chat actions
+    // =========================
+    function openGlobal() {
+      state.activeChat = { type: 'global', peerId: null };
+      renderChatHeader();
+      renderMessages();
+      renderDmList();
+    }
+
+    function openDm(peerId) {
+      if (peerId === state.user.id) {
+        toast('Нельзя открыть чат с самим собой.', 'error');
+        return;
+      }
+      const peer = getUserById(peerId);
+      if (!peer) {
+        toast('Пользователь не найден.', 'error');
+        return;
+      }
+      state.activeChat = { type: 'dm', peerId };
+      renderChatHeader();
+      renderMessages();
+      renderDmList();
+    }
+
+    function sendMessage(text) {
+      const myId = state.user.id;
+      text = (text||'').replace(/\r\n/g,'\n').trim();
+      if (!text) return;
+
+      if (state.activeChat.type === 'dm' && state.activeChat.peerId === myId) {
+        toast('Нельзя писать самому себе.', 'error');
+        return;
+      }
+
+      const m = {
+        id: 'm_' + Math.random().toString(36).slice(2) + '_' + now(),
+        from: myId,
+        to: state.activeChat.type === 'dm' ? state.activeChat.peerId : null,
+        text,
+        ts: now(),
+        chatType: state.activeChat.type
+      };
+
+      let ok = true;
+      if (state.activeChat.type === 'global') {
+        const msgs = loadGlobalMessages();
+        msgs.push(m);
+        ok = saveGlobalMessages(msgs);
+        if (ok) broadcast({ type: 'msg:global', message: m });
+      } else {
+        const peerId = state.activeChat.peerId;
+        const msgs = loadDmMessages(myId, peerId);
+        msgs.push(m);
+        ok = saveDmMessages(myId, peerId, msgs);
+        if (ok) broadcast({ type: 'msg:dm', pair: sortPair(myId, peerId), message: m });
+      }
+
+      if (!ok) {
+        toast('Сообщение не сохранено: ошибка localStorage (часто из-за слишком больших аватаров).', 'error');
+        return;
+      }
+
+      msgInput.value = '';
+      autoGrow(msgInput);
+      renderMessages();
+      renderDmList();
+    }
+
+    function adminPostToGlobal(title, body) {
+      if (!state.user?.isAdmin) {
+        toast('Недостаточно прав.', 'error');
+        return;
+      }
+      const t = (title||'').trim();
+      const text = (body||'').replace(/\r\n/g,'\n').trim();
+      if (!t && !text) return;
+
+      const m = {
+        id: 'p_' + Math.random().toString(36).slice(2) + '_' + now(),
+        from: state.user.id,
+        to: null,
+        text,
+        ts: now(),
+        chatType: 'global',
+        kind: 'post',
+        postTitle: t
+      };
+
+      const msgs = loadGlobalMessages();
+      msgs.push(m);
+      const ok = saveGlobalMessages(msgs);
+      if (!ok) {
+        toast('Пост не сохранён: ошибка localStorage.', 'error');
+        return;
+      }
+      broadcast({ type: 'msg:global', message: m });
+
+      if (state.activeChat.type === 'global') renderMessages();
+      toast('Пост опубликован.');
+    }
+
+    // click on nickname inside global chat to open DM
+    messagesEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action="openUserChatFromMessage"]');
+      if (!btn) return;
+      const userId = btn.dataset.userid;
+      if (!userId) return;
+      if (state.activeChat.type !== 'global') return;
+      if (userId === state.user.id) {
+        toast('С собой чат открыть нельзя.', 'error');
+        return;
+      }
+      openDm(userId);
+    });
+
+    // =========================
+    // Profile
+    // =========================
+    function openProfile() {
+      profileError.classList.add('hidden');
+      profileError.textContent = '';
+      profileNick.value = state.user.nick;
+      profileNick.disabled = !!state.user.isAdmin; // lock admin nick
+      profileId.value = state.user.id;
+      profileAvatar.src = state.user.avatar || defaultAvatarDataUrl(state.user.nick);
+      profileAvatarFile.value = '';
+      profileModal.classList.remove('hidden');
+    }
+    function closeProfile() {
+      profileModal.classList.add('hidden');
+    }
+
+    async function saveProfileChanges() {
+      const newNick = (profileNick.value||'').trim();
+      if (state.user.isAdmin) {
+        // keep admin identity stable
+        profileError.textContent = 'Ник админ-аккаунта менять нельзя.';
+        profileError.classList.remove('hidden');
+        return;
+      }
+
+      if (newNick.length < 2) {
+        profileError.textContent = 'Ник слишком короткий (минимум 2 символа).';
+        profileError.classList.remove('hidden');
+        return;
+      }
+      if (newNick.toLowerCase() === ADMIN_NICK.toLowerCase()) {
+        profileError.textContent = 'Этот ник зарезервирован.';
+        profileError.classList.remove('hidden');
+        return;
+      }
+
+      const users = loadUsers();
+      const clash = users.find(u => u.id !== state.user.id && (u.nick||'').toLowerCase() === newNick.toLowerCase());
+      if (clash) {
+        profileError.textContent = 'Этот ник уже занят.';
+        profileError.classList.remove('hidden');
+        return;
+      }
+
+      const idx = users.findIndex(u => u.id === state.user.id);
+      if (idx === -1) {
+        profileError.textContent = 'Профиль не найден.';
+        profileError.classList.remove('hidden');
+        return;
+      }
+
+      const current = users[idx];
+      let newPassHash = current.passHash;
+      if (newNick !== current.nick) {
+        const pw = prompt('Чтобы сменить ник, введи текущий пароль:');
+        if (pw === null) return;
+        const testHash = await sha256Base64(`${current.nick}:${pw}`);
+        if (testHash !== current.passHash) {
+          profileError.textContent = 'Неверный пароль. Ник не изменён.';
+          profileError.classList.remove('hidden');
+          return;
+        }
+        newPassHash = await sha256Base64(`${newNick}:${pw}`);
+      }
+
+      current.nick = newNick;
+      current.passHash = newPassHash;
+      current.avatar = profileAvatar.src;
+      current.updatedAt = now();
+      users[idx] = current;
+      saveUsers(users);
+      state.user = current;
+      setSession(current.id);
+
+      broadcast({ type: 'user:updated', userId: current.id });
+      closeProfile();
+      renderAll();
+      toast('Профиль сохранён.');
+    }
+
+    // =========================
+    // Admin / Mod panel
+    // =========================
+    function openAdmin() {
+      if (!state.user) return;
+      const r = roleOf(state.user);
+      if (!(canPost(state.user) || canMute(state.user) || canBan(state.user) || canCreateAccounts(state.user))) return;
+
+      // subtitle & visibility
+      adminSubtitle.textContent = r === 'admin'
+        ? 'Админ: посты, мут/бан в общем чате, создание аккаунтов, экспорт/сброс.'
+        : 'Модератор: посты и мут в «# Общем чате». Бан/создание аккаунтов недоступны.';
+
+      // Post
+      const postOk = canPost(state.user);
+      postRightsBadge.classList.toggle('hidden', !postOk);
+      btnSendPost.disabled = !postOk;
+      btnSendPost.classList.toggle('opacity-40', !postOk);
+      btnSendPost.classList.toggle('cursor-not-allowed', !postOk);
+
+      // Moderation
+      const modOk = canMute(state.user) || canBan(state.user);
+      modRightsBadge.classList.toggle('hidden', !modOk);
+      modFilter.disabled = !modOk;
+      btnRefreshMod.disabled = !modOk;
+      modUsersList.classList.toggle('opacity-60', !modOk);
+
+      // Create accounts (admin only)
+      createAccountSection.classList.toggle('hidden', !canCreateAccounts(state.user));
+      adminOnlyActions.classList.toggle('hidden', !canCreateAccounts(state.user));
+
+      renderAdminStats();
+      renderModUsersList();
+      adminModal.classList.remove('hidden');
+    }
+    function closeAdmin() {
+      adminModal.classList.add('hidden');
+    }
+
+    function renderAdminStats() {
+      const users = loadUsers();
+      const globalCount = loadGlobalMessages().length;
+      let dmThreads = 0;
+      let dmMessages = 0;
+      for (let i=0;i<localStorage.length;i++) {
+        const k = localStorage.key(i);
+        if (!k || !k.startsWith('scam_dm_v1_')) continue;
+        dmThreads++;
+        try {
+          const arr = JSON.parse(localStorage.getItem(k) || '[]');
+          dmMessages += Array.isArray(arr) ? arr.length : 0;
+        } catch {}
+      }
+
+      const st = loadModState();
+      const mutesCount = Object.keys(st.mutes || {}).length;
+      const bansCount = Object.keys(st.bans || {}).length;
+
+      adminStats.innerHTML = `
+        <div class="grid sm:grid-cols-4 gap-2">
+          <div class="rounded-xl border border-slate-800 bg-slate-950/40 p-2"><div class="text-xs text-slate-400">Пользователей</div><div class="text-lg font-semibold">${users.length}</div></div>
+          <div class="rounded-xl border border-slate-800 bg-slate-950/40 p-2"><div class="text-xs text-slate-400">Сообщений (общий)</div><div class="text-lg font-semibold">${globalCount}</div></div>
+          <div class="rounded-xl border border-slate-800 bg-slate-950/40 p-2"><div class="text-xs text-slate-400">Лички (треды/сообщения)</div><div class="text-lg font-semibold">${dmThreads} / ${dmMessages}</div></div>
+          <div class="rounded-xl border border-slate-800 bg-slate-950/40 p-2"><div class="text-xs text-slate-400">Муты / Баны (общий)</div><div class="text-lg font-semibold">${mutesCount} / ${bansCount}</div></div>
+        </div>
+      `;
+    }
+
+    function setInlineError(el, text) {
+      if (!el) return;
+      if (!text) { el.classList.add('hidden'); el.textContent = ''; return; }
+      el.textContent = text;
+      el.classList.remove('hidden');
+    }
+
+    function roleLabel(u) {
+      const r = roleOf(u);
+      if (r === 'admin') return 'админ';
+      if (r === 'mod') return 'модератор';
+      return 'пользователь';
+    }
+
+    function renderModUsersList() {
+      if (!modUsersList) return;
+      const q = (modFilter?.value || '').trim().toLowerCase();
+      const users = loadUsers()
+        .filter(u => u.id !== ADMIN_ID ? true : true)
+        .sort((a,b) => (a.nick||'').localeCompare(b.nick||''));
+
+      const filtered = !q ? users : users.filter(u => {
+        const nick = (u.nick||'').toLowerCase();
+        const id = (u.id||'').toLowerCase();
+        return nick.includes(q) || id.includes(q);
+      });
+
+      const st = loadModState();
+      modUsersList.innerHTML = '';
+
+      const wrap = document.createElement('div');
+      wrap.className = 'divide-y divide-slate-800';
+
+      for (const u of filtered) {
+        const mi = muteInfo(u.id);
+        const banned = !!st.bans?.[u.id];
+
+        const row = document.createElement('div');
+        row.className = 'p-2 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3';
+
+        const left = document.createElement('div');
+        left.className = 'flex items-center gap-3 min-w-0 flex-1';
+        left.innerHTML = `
+          <img class="w-9 h-9 rounded-xl object-cover border border-slate-700" src="${u.avatar || defaultAvatarDataUrl(u.nick)}" alt="" />
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 min-w-0">
+              <div class="font-semibold truncate">${escapeHtml(u.nick)}</div>
+              <span class="text-[11px] px-2 py-0.5 rounded-lg border border-slate-700 bg-slate-900/30 text-slate-200/90 shrink-0">${roleLabel(u)}</span>
+            </div>
+            <div class="text-xs text-slate-500 font-mono truncate">${escapeHtml(u.id)}</div>
+            <div class="text-xs ${banned ? 'text-rose-200' : (mi.muted ? 'text-amber-200' : 'text-slate-500')} truncate">
+              ${banned ? 'БАН: общий чат' : (mi.muted ? `МУТ: общий чат (${mi.until ? fmtDuration(mi.until - now()) : '∞'})` : 'Нет ограничений')}
+            </div>
+          </div>
+        `;
+
+        const actions = document.createElement('div');
+        actions.className = 'flex flex-wrap gap-2 justify-end';
+
+        const canMuteNow = canMute(state.user);
+        const canBanNow = canBan(state.user);
+
+        const btnMute = document.createElement('button');
+        btnMute.className = 'px-3 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-sm text-amber-100 disabled:opacity-40 disabled:cursor-not-allowed';
+        btnMute.textContent = mi.muted ? 'Размут' : 'Мут';
+        btnMute.disabled = !canMuteNow || u.id === ADMIN_ID;
+        btnMute.addEventListener('click', () => {
+          if (!canMuteNow) return;
+          if (u.id === ADMIN_ID) return toast('Нельзя мутить админа.', 'error');
+          if (mi.muted) {
+            unmuteUser(u.id);
+          } else {
+            const minutesStr = prompt('Мут на сколько минут? (например 5). Пусто = 10 минут.', '10');
+            if (minutesStr === null) return;
+            let minutes = parseInt(minutesStr || '10', 10);
+            if (!Number.isFinite(minutes) || minutes <= 0) minutes = 10;
+            muteUser(u.id, minutes);
+          }
+        });
+
+        const btnBan = document.createElement('button');
+        btnBan.className = 'px-3 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-sm text-rose-100 disabled:opacity-40 disabled:cursor-not-allowed';
+        btnBan.textContent = banned ? 'Разбан' : 'Бан';
+        btnBan.disabled = !canBanNow || u.id === ADMIN_ID;
+        btnBan.addEventListener('click', () => {
+          if (!canBanNow) return;
+          if (u.id === ADMIN_ID) return toast('Нельзя банить админа.', 'error');
+          if (banned) {
+            unbanUser(u.id);
+          } else {
+            const ok = confirm(`Забанить ${u.nick} в общем чате? Он не сможет писать в # общий.`);
+            if (!ok) return;
+            banUser(u.id);
+          }
+        });
+
+        actions.appendChild(btnMute);
+        actions.appendChild(btnBan);
+
+        row.appendChild(left);
+        row.appendChild(actions);
+        wrap.appendChild(row);
+      }
+
+      if (!filtered.length) {
+        modUsersList.innerHTML = '<div class="p-3 text-sm text-slate-400">Ничего не найдено.</div>';
+      } else {
+        modUsersList.appendChild(wrap);
+      }
+    }
+
+    function muteUser(userId, minutes) {
+      const st = loadModState();
+      const until = now() + minutes * 60 * 1000;
+      st.mutes = st.mutes || {};
+      st.mutes[userId] = { until, by: state.user.id, ts: now() };
+      if (!saveModState(st)) return;
+      broadcast({ type: 'mod:mute', from: state.user.id, target: userId, until });
+      toast('Мут установлен.');
+      renderAdminStats();
+      renderModUsersList();
+      if (state.activeChat.type === 'global') renderChatHeader();
+    }
+    function unmuteUser(userId) {
+      const st = loadModState();
+      if (st.mutes?.[userId]) delete st.mutes[userId];
+      if (!saveModState(st)) return;
+      broadcast({ type: 'mod:unmute', from: state.user.id, target: userId });
+      toast('Мут снят.');
+      renderAdminStats();
+      renderModUsersList();
+      if (state.activeChat.type === 'global') renderChatHeader();
+    }
+    function banUser(userId) {
+      const st = loadModState();
+      st.bans = st.bans || {};
+      st.bans[userId] = { by: state.user.id, ts: now() };
+      // ban implies unmute
+      if (st.mutes?.[userId]) delete st.mutes[userId];
+      if (!saveModState(st)) return;
+      broadcast({ type: 'mod:ban', from: state.user.id, target: userId });
+      toast('Пользователь забанен в общем чате.');
+      renderAdminStats();
+      renderModUsersList();
+      if (state.activeChat.type === 'global') renderChatHeader();
+    }
+    function unbanUser(userId) {
+      const st = loadModState();
+      if (st.bans?.[userId]) delete st.bans[userId];
+      if (!saveModState(st)) return;
+      broadcast({ type: 'mod:unban', from: state.user.id, target: userId });
+      toast('Пользователь разбанен.');
+      renderAdminStats();
+      renderModUsersList();
+      if (state.activeChat.type === 'global') renderChatHeader();
+    }
+
+    async function createAccountByAdmin(nick, pass, role) {
+      if (!canCreateAccounts(state.user)) throw new Error('Недостаточно прав.');
+      nick = (nick||'').trim();
+      if (nick.length < 2) throw new Error('Ник слишком короткий (минимум 2 символа).');
+      if (nick.toLowerCase() === ADMIN_NICK.toLowerCase()) throw new Error('Этот ник зарезервирован.');
+
+      const users = loadUsers();
+      if (users.some(u => (u.nick||'').toLowerCase() === nick.toLowerCase())) throw new Error('Этот ник уже занят.');
+
+      const id = randomId();
+      const passHash = await sha256Base64(`${nick}:${pass}`);
+      const u = {
+        id,
+        nick,
+        passHash,
+        avatar: defaultAvatarDataUrl(nick),
+        role: (role === 'admin' ? 'admin' : (role === 'mod' ? 'mod' : 'user')),
+        isAdmin: (role === 'admin'),
+        createdAt: now(),
+        updatedAt: now()
+      };
+      users.push(u);
+      saveUsers(users);
+      broadcast({ type: 'user:created', userId: id });
+      toast(`Аккаунт создан: ${nick} (${u.role}).`);
+      renderAdminStats();
+      renderModUsersList();
+      return u;
+    }
+
+    function exportAllData() {
+      if (!state.user?.isAdmin) return;
+      const dump = {
+        exportedAt: new Date().toISOString(),
+        note: 'SCAM Messenger demo export. Values are raw localStorage strings.',
+        keys: {}
+      };
+      for (let i=0;i<localStorage.length;i++) {
+        const k = localStorage.key(i);
+        if (!k || !k.startsWith('scam_')) continue;
+        dump.keys[k] = localStorage.getItem(k);
+      }
+      const blob = new Blob([JSON.stringify(dump, null, 2)], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `scam_messenger_export_${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast('Экспорт готов.');
+    }
+
+    // =========================
+    // WebRTC call handling (tabs demo)
+    // =========================
+    let ringtone = null;
+    function startRingtone() {
+      stopRingtone();
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const gain = ctx.createGain();
+        gain.gain.value = 0.0001;
+        gain.connect(ctx.destination);
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        osc.connect(gain);
+        osc.start();
+
+        let on = false;
+        const timer = setInterval(() => {
+          on = !on;
+          gain.gain.setTargetAtTime(on ? 0.08 : 0.0001, ctx.currentTime, 0.01);
+          osc.frequency.setTargetAtTime(on ? 880 : 660, ctx.currentTime, 0.01);
+        }, 350);
+
+        ringtone = { ctx, osc, gain, timer };
+      } catch {
+        ringtone = null;
+      }
+    }
+    function stopRingtone() {
+      if (!ringtone) return;
+      try {
+        clearInterval(ringtone.timer);
+        ringtone.gain.gain.setTargetAtTime(0.0001, ringtone.ctx.currentTime, 0.01);
+        ringtone.osc.stop();
+        ringtone.ctx.close();
+      } catch {}
+      ringtone = null;
+    }
+
+    function setCallUi(inCall) {
+      if (inCall) {
+        btnCall.classList.add('hidden');
+        btnHangup.classList.remove('hidden');
+        callOverlay.classList.remove('hidden');
+        $('#bannerLimitations').classList.add('hidden');
+      } else {
+        btnCall.classList.remove('hidden');
+        btnHangup.classList.add('hidden');
+        callOverlay.classList.add('hidden');
+        $('#bannerLimitations').classList.remove('hidden');
+        remoteVideo.srcObject = null;
+        localVideo.srcObject = null;
+      }
+    }
+
+    function updateCallButtons() {
+      btnToggleMic.textContent = `Микрофон: ${state.call.micOn ? 'ВКЛ' : 'ВЫКЛ'}`;
+      btnToggleCam.textContent = `Камера: ${state.call.camOn ? 'ВКЛ' : 'ВЫКЛ'}`;
+      btnToggleScreen.textContent = `Экран: ${state.call.screenOn ? 'ВКЛ' : 'ВЫКЛ'}`;
+    }
+
+    async function ensureLocalMedia() {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      state.call.localStream = stream;
+      localVideo.srcObject = stream;
+      state.call.micOn = true;
+      state.call.camOn = true;
+      updateCallButtons();
+      return stream;
+    }
+
+    function stopStream(stream) {
+      if (!stream) return;
+      for (const t of stream.getTracks()) {
+        try { t.stop(); } catch {}
+      }
+    }
+
+    function buildPeerConnection(peerId) {
+      const pc = new RTCPeerConnection({
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+        ]
+      });
+
+      state.call.pc = pc;
+      state.call.peerId = peerId;
+      state.call.remoteStream = new MediaStream();
+      remoteVideo.srcObject = state.call.remoteStream;
+
+      pc.ontrack = (e) => {
+        for (const track of e.streams[0].getTracks()) {
+          state.call.remoteStream.addTrack(track);
+        }
+      };
+      pc.onicecandidate = (e) => {
+        if (e.candidate) {
+          broadcast({ type: 'call:ice', from: state.user.id, to: peerId, candidate: e.candidate });
+        }
+      };
+      pc.onconnectionstatechange = () => {
+        callStatus.textContent = `Состояние: ${pc.connectionState}`;
+      };
+
+      return pc;
+    }
+
+    async function startCall(peerId) {
+      if (state.activeChat.type !== 'dm') {
+        toast('В общий чат звонить нельзя.', 'error');
+        return;
+      }
+      if (peerId === state.user.id) {
+        toast('Нельзя звонить самому себе.', 'error');
+        return;
+      }
+      if (state.call.inCall || state.pendingCall) {
+        toast('Уже есть активный/входящий звонок.', 'error');
+        return;
+      }
+
+      state.call.inCall = true;
+      state.call.outgoing = true;
+      setCallUi(true);
+      updateCallButtons();
+
+      const peer = getUserById(peerId);
+      callWith.textContent = `Звонок: ${peer ? peer.nick : peerId}`;
+      callStatus.textContent = 'Исходящий… ожидание ответа';
+
+      const stream = await ensureLocalMedia();
+      const pc = buildPeerConnection(peerId);
+      for (const track of stream.getTracks()) pc.addTrack(track, stream);
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      broadcast({
+        type: 'call:offer',
+        from: state.user.id,
+        to: peerId,
+        sdp: pc.localDescription,
+        meta: { ts: now() }
+      });
+    }
+
+    function showIncomingCall(fromId) {
+      const u = getUserById(fromId);
+      incomingAvatar.src = (u?.avatar) || defaultAvatarDataUrl(u?.nick || fromId);
+      incomingTitle.textContent = 'Входящий звонок…';
+      incomingSubtitle.textContent = u ? `${u.nick} (${u.id})` : fromId;
+      incomingCallModal.classList.remove('hidden');
+      startRingtone();
+    }
+    function hideIncomingCall() {
+      incomingCallModal.classList.add('hidden');
+      stopRingtone();
+    }
+
+    async function acceptIncomingCall() {
+      if (!state.pendingCall) return;
+      const { from, sdp } = state.pendingCall;
+      hideIncomingCall();
+
+      if (state.call.inCall) {
+        broadcast({ type: 'call:decline', from: state.user.id, to: from, reason: 'busy' });
+        state.pendingCall = null;
+        return;
+      }
+
+      state.call.inCall = true;
+      state.call.outgoing = false;
+      setCallUi(true);
+      updateCallButtons();
+
+      const peer = getUserById(from);
+      callWith.textContent = `Звонок: ${peer ? peer.nick : from}`;
+      callStatus.textContent = 'Принятие…';
+
+      const stream = await ensureLocalMedia();
+      const pc = buildPeerConnection(from);
+      for (const track of stream.getTracks()) pc.addTrack(track, stream);
+
+      await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+      state.call.remoteDescSet = true;
+
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+
+      if (state.call.iceQueue.length) {
+        for (const c of state.call.iceQueue) {
+          try { await pc.addIceCandidate(c); } catch {}
+        }
+        state.call.iceQueue = [];
+      }
+
+      broadcast({ type: 'call:answer', from: state.user.id, to: from, sdp: pc.localDescription });
+      callStatus.textContent = 'Подключено/ожидание медиа…';
+
+      state.pendingCall = null;
+    }
+
+    function declineIncomingCall() {
+      if (!state.pendingCall) return;
+      const { from } = state.pendingCall;
+      hideIncomingCall();
+      broadcast({ type: 'call:decline', from: state.user.id, to: from, reason: 'declined' });
+      state.pendingCall = null;
+    }
+
+    async function handleRemoteAnswer(from, sdp) {
+      if (!state.call.pc) return;
+      if (state.call.peerId !== from) return;
+      await state.call.pc.setRemoteDescription(new RTCSessionDescription(sdp));
+      state.call.remoteDescSet = true;
+      if (state.call.iceQueue.length) {
+        for (const c of state.call.iceQueue) {
+          try { await state.call.pc.addIceCandidate(c); } catch {}
+        }
+        state.call.iceQueue = [];
+      }
+      callStatus.textContent = 'Подключено/ожидание медиа…';
+    }
+
+    async function handleRemoteIce(from, candidate) {
+      if (!state.call.inCall || state.call.peerId !== from) return;
+      const c = new RTCIceCandidate(candidate);
+      if (!state.call.pc || !state.call.remoteDescSet) {
+        state.call.iceQueue.push(c);
+        return;
+      }
+      try { await state.call.pc.addIceCandidate(c); } catch {}
+    }
+
+    function wipeAllData({silent=false}={}) {
+      try {
+        if (state.pendingCall) {
+          hideIncomingCall();
+          state.pendingCall = null;
+        }
+      } catch {}
+      try {
+        if (state.call.inCall) endCall(false);
+      } catch {}
+
+      const keys = [];
+      for (let i=0;i<localStorage.length;i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('scam_')) keys.push(k);
+      }
+      for (const k of keys) {
+        try { localStorage.removeItem(k); } catch {}
+      }
+
+      state.user = null;
+      if (!silent) toast('Данные сброшены. Перезагрузка…');
+      setTimeout(() => location.reload(), 400);
+    }
+
+    function endCall(localInitiated=true) {
+      const peerId = state.call.peerId;
+
+      try { if (state.call.pc) state.call.pc.close(); } catch {}
+      state.call.pc = null;
+
+      stopStream(state.call.screenStream);
+      state.call.screenStream = null;
+
+      stopStream(state.call.localStream);
+      state.call.localStream = null;
+
+      state.call.remoteStream = null;
+      state.call.peerId = null;
+      state.call.inCall = false;
+      state.call.outgoing = false;
+      state.call.remoteDescSet = false;
+      state.call.iceQueue = [];
+      state.call.micOn = true;
+      state.call.camOn = true;
+      state.call.screenOn = false;
+      updateCallButtons();
+
+      setCallUi(false);
+      renderChatHeader();
+
+      if (localInitiated && peerId) {
+        broadcast({ type: 'call:hangup', from: state.user.id, to: peerId });
+      }
+    }
+
+    async function toggleMic() {
+      state.call.micOn = !state.call.micOn;
+      if (state.call.localStream) {
+        for (const t of state.call.localStream.getAudioTracks()) t.enabled = state.call.micOn;
+      }
+      updateCallButtons();
+    }
+
+    async function toggleCam() {
+      state.call.camOn = !state.call.camOn;
+      if (state.call.localStream) {
+        for (const t of state.call.localStream.getVideoTracks()) t.enabled = state.call.camOn;
+      }
+      updateCallButtons();
+    }
+
+    async function toggleScreen() {
+      if (!state.call.inCall || !state.call.pc) return;
+
+      if (!state.call.screenOn) {
+        try {
+          const s = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+          state.call.screenStream = s;
+          const screenTrack = s.getVideoTracks()[0];
+          if (!screenTrack) return;
+
+          const sender = state.call.pc.getSenders().find(snd => snd.track && snd.track.kind === 'video');
+          if (sender) await sender.replaceTrack(screenTrack);
+
+          localVideo.srcObject = s;
+
+          state.call.screenOn = true;
+          updateCallButtons();
+
+          screenTrack.onended = async () => {
+            if (state.call.screenOn) await toggleScreen();
+          };
+        } catch {
+          toast('Не удалось включить демонстрацию экрана.', 'error');
+        }
+      } else {
+        const pc = state.call.pc;
+        const sender = pc.getSenders().find(snd => snd.track && snd.track.kind === 'video');
+        const camTrack = state.call.localStream?.getVideoTracks()?.[0] || null;
+        try {
+          if (sender && camTrack) await sender.replaceTrack(camTrack);
+        } catch {}
+        stopStream(state.call.screenStream);
+        state.call.screenStream = null;
+        localVideo.srcObject = state.call.localStream;
+        state.call.screenOn = false;
+        updateCallButtons();
+      }
+    }
+
+    // =========================
+    // Broadcast handler
+    // =========================
+    function handleBroadcast(msg) {
+      // messages
+      if (msg.type === 'msg:global') {
+        if (!state.user) return;
+        try {
+          const msgs = loadGlobalMessages();
+          if (!msgs.some(m => m.id === msg.message?.id)) {
+            msgs.push(msg.message);
+            saveGlobalMessages(msgs);
+          }
+        } catch {}
+        if (state.activeChat.type === 'global') renderMessages();
+        return;
+      }
+
+      if (msg.type === 'msg:dm') {
+        if (!state.user) return;
+        const myId = state.user.id;
+        const pair = msg.pair;
+        if (!pair || !pair.includes(myId)) return;
+
+        const other = pair.split('_').find(x => x !== myId);
+        if (!other) return;
+        const key = dmKey(myId, other);
+        const msgs = loadJson(key, []);
+        if (!msgs.some(m => m.id === msg.message.id)) {
+          msgs.push(msg.message);
+          saveJson(key, msgs);
+        }
+        renderDmList();
+        if (state.activeChat.type==='dm' && state.activeChat.peerId === other) renderMessages();
+        return;
+      }
+
+      // user updates
+      if (msg.type === 'user:updated' || msg.type === 'user:created') {
+        if (state.user) {
+          renderChatHeader();
+          renderMessages();
+          renderDmList();
+          if (msg.userId === state.user.id) renderMe();
+        }
+        return;
+      }
+
+      // calls
+      if (msg.type === 'call:offer') {
+        if (!state.user) return;
+        if (msg.to !== state.user.id) return;
+        if (state.activeChat.type !== 'dm' || state.activeChat.peerId !== msg.from) {
+          if (msg.from !== state.user.id) openDm(msg.from);
+        }
+
+        if (state.call.inCall || state.pendingCall) {
+          broadcast({ type: 'call:decline', from: state.user.id, to: msg.from, reason: 'busy' });
+          return;
+        }
+
+        state.pendingCall = { from: msg.from, sdp: msg.sdp, meta: msg.meta };
+        showIncomingCall(msg.from);
+        return;
+      }
+
+      if (msg.type === 'call:answer') {
+        if (!state.user) return;
+        if (msg.to !== state.user.id) return;
+        handleRemoteAnswer(msg.from, msg.sdp);
+        return;
+      }
+
+      if (msg.type === 'call:ice') {
+        if (!state.user) return;
+        if (msg.to !== state.user.id) return;
+        handleRemoteIce(msg.from, msg.candidate);
+        return;
+      }
+
+      if (msg.type === 'call:decline') {
+        if (!state.user) return;
+        if (msg.to !== state.user.id) return;
+        toast('Звонок отклонён.', 'error');
+        endCall(false);
+        return;
+      }
+
+      if (msg.type === 'call:hangup') {
+        if (!state.user) return;
+        if (msg.to !== state.user.id) return;
+        toast('Звонок завершён.');
+        endCall(false);
+        return;
+      }
+
+      if (msg.type === 'app:wipe') {
+        // accept wipe only if initiated by admin
+        const from = msg.from;
+        const u = from ? getUserById(from) : null;
+        if (!u?.isAdmin) return;
+        wipeAllData({ silent: true });
+        return;
+      }
+    }
+
+    // =========================
+    // Input helpers
+    // =========================
+    function autoGrow(ta) {
+      ta.style.height = 'auto';
+      ta.style.height = Math.min(140, ta.scrollHeight) + 'px';
+    }
+
+    msgInput.addEventListener('input', () => autoGrow(msgInput));
+
+    // =========================
+    // Search
+    // =========================
+    function doSearch() {
+      if (!state.user) return;
+      const qRaw = (searchInput.value || '').trim();
+      const q = qRaw.toLowerCase();
+      if (!q) {
+        searchResults.classList.add('hidden');
+        searchResults.innerHTML = '';
+        return;
+      }
+
+      const users = loadUsers();
+      const exactById = users.find(u => (u.id || '').toLowerCase() === q && u.id !== state.user.id);
+      if (exactById) {
+        renderSearchResults([exactById]);
+        return;
+      }
+
+      const items = users
+        .filter(u => u.id !== state.user.id)
+        .filter(u => {
+          const nick = (u.nick || '').toLowerCase();
+          const id = (u.id || '').toLowerCase();
+          return nick.includes(q) || id.includes(q);
+        })
+        .slice(0, 12);
+
+      renderSearchResults(items);
+
+      if (!items.length) {
+        searchResults.innerHTML = `
+          <div class="p-3 text-sm text-slate-400">
+            Ничего не найдено по <span class="font-mono">${escapeHtml(qRaw)}</span>.<br>
+            <span class="text-xs text-slate-500">Важно: в этом демо поиск видит только пользователей, зарегистрированных в этом же браузере (или в других вкладках этого браузера).</span>
+          </div>
+        `;
+        searchResults.classList.remove('hidden');
+      }
+    }
+
+    // =========================
+    // Events wiring
+    // =========================
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setAuthError(loginError, null);
+      try {
+        const u = await login(loginIdentifier.value, loginPassword.value);
+        state.user = u;
+        setSession(u.id);
+        showApp();
+        state.activeChat = { type: 'global', peerId: null };
+        renderAll();
+
+        if (state.user.isAdmin) {
+          toast('Вы вошли как админ: SCAM_OFFICIAL.');
+        }
+      } catch (err) {
+        setAuthError(loginError, err.message || String(err));
+      }
+    });
+
+    registerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setAuthError(regError, null);
+      try {
+        let avatarDataUrl = null;
+        if (regAvatar.files && regAvatar.files[0]) {
+          avatarDataUrl = await fileToDataUrl(regAvatar.files[0]);
+        }
+        const u = await register(regNick.value, regPassword.value, avatarDataUrl);
+        state.user = u;
+        setSession(u.id);
+        showApp();
+        state.activeChat = { type: 'global', peerId: null };
+        renderAll();
+        toast('Аккаунт создан.');
+      } catch (err) {
+        setAuthError(regError, err.message || String(err));
+      }
+    });
+
+    btnLogout.addEventListener('click', () => {
+      if (state.pendingCall) {
+        hideIncomingCall();
+        state.pendingCall = null;
+      }
+      if (state.call.inCall) endCall(true);
+      state.user = null;
+      clearSession();
+      showAuth();
+      toast('Вы вышли.');
+    });
+
+    btnProfile.addEventListener('click', openProfile);
+    btnAdmin.addEventListener('click', openAdmin);
+
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-close]');
+      if (!btn) return;
+      const what = btn.dataset.close;
+      if (what === 'emoji') hideEmoji();
+      if (what === 'profile') closeProfile();
+      if (what === 'admin') closeAdmin();
+    });
+
+    btnCancelProfile.addEventListener('click', closeProfile);
+
+    profileAvatarFile.addEventListener('change', async () => {
+      const f = profileAvatarFile.files?.[0];
+      if (!f) return;
+      if (f.size > 3.5 * 1024 * 1024) {
+        toast('Файл слишком большой (макс ~3.5MB).', 'error');
+        profileAvatarFile.value = '';
+        return;
+      }
+      profileAvatar.src = await fileToDataUrl(f);
+    });
+
+    btnRemoveAvatar.addEventListener('click', () => {
+      profileAvatar.src = defaultAvatarDataUrl(profileNick.value || state.user.nick || state.user.id);
+      profileAvatarFile.value = '';
+    });
+
+    btnCopyId.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(state.user.id);
+        toast('ID скопирован.');
+      } catch {
+        toast('Не удалось скопировать (разрешения браузера).', 'error');
+      }
+    });
+
+    btnSaveProfile.addEventListener('click', saveProfileChanges);
+
+    btnGlobal.addEventListener('click', openGlobal);
+    btnRefreshChats.addEventListener('click', renderDmList);
+
+    searchInput.addEventListener('input', doSearch);
+    btnSearch?.addEventListener('click', doSearch);
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        doSearch();
+      }
+    });
+
+    btnSearchClear.addEventListener('click', () => {
+      searchInput.value = '';
+      searchResults.classList.add('hidden');
+      searchResults.innerHTML = '';
+      searchInput.focus();
+    });
+
+    btnEmoji.addEventListener('click', () => showEmoji());
+
+    btnSend.addEventListener('click', () => sendMessage(msgInput.value));
+    msgInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage(msgInput.value);
+      }
+    });
+
+    btnCall.addEventListener('click', async () => {
+      if (state.activeChat.type !== 'dm') {
+        toast('В общий чат звонить нельзя.', 'error');
+        return;
+      }
+      await startCall(state.activeChat.peerId);
+    });
+    btnHangup.addEventListener('click', () => endCall(true));
+    btnHangup2.addEventListener('click', () => endCall(true));
+
+    btnDecline.addEventListener('click', declineIncomingCall);
+    btnAccept.addEventListener('click', acceptIncomingCall);
+
+    btnToggleMic.addEventListener('click', toggleMic);
+    btnToggleCam.addEventListener('click', toggleCam);
+    btnToggleScreen.addEventListener('click', toggleScreen);
+
+    btnSendPost.addEventListener('click', () => {
+      adminPostToGlobal(postTitle.value, postBody.value);
+      postTitle.value = '';
+      postBody.value = '';
+      renderAdminStats();
+    });
+
+    btnExport.addEventListener('click', exportAllData);
+
+    btnWipeAll.addEventListener('click', () => {
+      if (!state.user?.isAdmin) return;
+      const ok = confirm('Сбросить ВСЕ аккаунты/чаты этого демо в этом браузере? Это удалит всё и перезагрузит страницу.');
+      if (!ok) return;
+      try { broadcast({ type: 'app:wipe', from: state.user.id }); } catch {}
+      wipeAllData({ silent: false });
+    });
+
+    // =========================
+    // Startup
+    // =========================
+    function migrateUserAvatars() {
+      const users = loadUsers();
+      let changed = false;
+      for (const u of users) {
+        if (!u.avatar) { u.avatar = defaultAvatarDataUrl(u.nick || u.id); changed = true; }
+
+        // normalize roles
+        const shouldBeAdmin = (u.id === ADMIN_ID || (u.nick||'') === ADMIN_NICK);
+        if (shouldBeAdmin) {
+          if (u.role !== 'admin') { u.role = 'admin'; changed = true; }
+          if (!u.isAdmin) { u.isAdmin = true; changed = true; }
+        } else {
+          if (!u.role) { u.role = 'user'; changed = true; }
+          if (typeof u.isAdmin !== 'boolean') { u.isAdmin = false; changed = true; }
+          if (u.isAdmin && u.role !== 'admin') { u.isAdmin = false; changed = true; }
+        }
+      }
+      if (changed) saveUsers(users);
+    }
+
+    async function init() {
+      await ensureAdminAccount();
+      migrateUserAvatars();
+      renderEmojiGrid();
+      autoGrow(msgInput);
+
+      const session = loadSession();
+      if (session?.userId) {
+        const u = getUserById(session.userId);
+        if (u) {
+          state.user = u;
+          showApp();
+          state.activeChat = { type: 'global', peerId: null };
+          renderAll();
+          return;
+        }
+      }
+      showAuth();
+
+      // Hint admin credentials (demo only)
+      console.info('[SCAM Messenger] Admin account:', { nick: ADMIN_NICK, id: ADMIN_ID, pass: ADMIN_PASS });
+    }
+
+    window.addEventListener('beforeunload', () => {
+      if (state.call.inCall && state.call.peerId) {
+        try { broadcast({ type: 'call:hangup', from: state.user?.id, to: state.call.peerId }); } catch {}
+      }
+    });
+
+    init();
+  </script>
+</body>
+</html>
