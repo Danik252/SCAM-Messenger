@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCAM Messenger</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        .chat-bubble { max-width: 75%; word-wrap: break-word; }
+        .hidden-important { display: none !important; }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        .call-pulse::before {
+            content: '';
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            background-color: rgba(34, 197, 94, 0.5);
+            border-radius: 50%;
+            z-index: -1;
+            animation: pulse-ring 1.5s infinite;
+        }
+        @keyframes shake {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-15deg); }
+            75% { transform: rotate(15deg); }
+        }
+        .shake-animation { animation: shake 0.5s infinite; }
+        @keyframes ring-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.5); }
+            50% { box-shadow: 0 0 60px rgba(34, 197, 94, 0.9); }
+        }
+        .ring-glow { animation: ring-glow 1s infinite; }
+        @keyframes slideIn {
+            from { transform: translateY(-100px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .notification-slide { animation: slideIn 0.3s ease-out; }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        .notification-fadeout { animation: fadeOut 0.5s ease-out forwards; }
+        .screen-share-border {
+            border: 4px solid #22c55e;
+            box-shadow: 0 0 30px rgba(34, 197, 94, 0.5);
+        }
+        .status-dot { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans h-screen overflow-hidden selection:bg-blue-500 selection:text-white">
+
+    <div id="app" class="h-full w-full flex flex-col items-center justify-center">
+
+        <!-- AUTH SCREEN -->
+        <div id="auth-screen" class="w-full max-w-md p-8 bg-gray-800 rounded-2xl shadow-2xl border border-gray-700">
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-blue-500 mb-2">SCAM</h1>
+                <p class="text-xs text-gray-400 uppercase tracking-widest">Secure Communication & Anonymous Messaging</p>
+                <div class="mt-2 text-[10px] text-gray-500 bg-gray-900 p-2 rounded border border-gray-700">
+                    <i class="fas fa-video text-green-400"></i> Видео/Аудио звонки работают!<br>
+                    <i class="fas fa-desktop text-blue-400"></i> Демонстрация экрана
+                </div>
+                <div id="connection-status" class="mt-2 text-xs text-green-400">
+                    <i class="fas fa-check-circle"></i> Готово к работе
+                </div>
+            </div>
+
+            <div class="flex mb-6 bg-gray-700 rounded-lg p-1">
+                <button onclick="switchAuthMode('login')" id="tab-login" class="flex-1 py-2 rounded-md text-sm font-medium transition-colors bg-gray-600 text-white">Вход</button>
+                <button onclick="switchAuthMode('register')" id="tab-register" class="flex-1 py-2 rounded-md text-sm font-medium transition-colors text-gray-400 hover:text-white">Регистрация</button>
+            </div>
+
+            <form id="login-form" class="space-y-4" onsubmit="handleLogin(event)">
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Ваш Никнейм</label>
+                    <input type="text" id="login-nick" class="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-600" placeholder="Например: CoolHacker" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Пароль</label>
+                    <input type="password" id="login-pass" class="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition-all transform active:scale-95 shadow-lg shadow-blue-500/30">Войти</button>
+            </form>
+
+            <form id="register-form" class="space-y-4 hidden-important" onsubmit="handleRegister(event)">
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Придумайте Никнейм</label>
+                    <input type="text" id="reg-nick" class="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all" placeholder="CoolHacker2000" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Придумайте Пароль</label>
+                    <input type="password" id="reg-pass" class="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-lg transition-all transform active:scale-95 shadow-lg shadow-green-500/30">Создать аккаунт</button>
+            </form>
+            
+            <div id="auth-error" class="mt-4 text-red-400 text-center text-sm hidden"></div>
+            
+            <div class="mt-6 p-3 bg-yellow-900/30 border border-yellow-600/30 rounded-lg">
+                <p class="text-yellow-500 text-xs text-center">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    <b>Как звонить друзьям:</b><br>
+                    1. Зарегистрируйся и скопируй свой ID<br>
+                    2. Отправь ID другу<br>
+                    3. Друг вводит твой ID в поиск<br>
+                    4. Теперь можете звонить! 📞
+                </p>
+            </div>
+        </div>
+
+        <!-- MESSENGER SCREEN -->
+        <div id="messenger-screen" class="hidden-important w-full h-full flex overflow-hidden">
+            
+            <!-- Sidebar -->
+            <div class="w-80 bg-gray-800 border-r border-gray-700 flex flex-col shrink-0">
+                <div class="p-4 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
+                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition" onclick="toggleProfileModal(true)">
+                        <img id="current-user-avatar" src="" class="w-10 h-10 rounded-full bg-gray-600 object-cover">
+                        <div>
+                            <h3 id="current-user-nick" class="font-bold text-sm truncate w-24">User</h3>
+                            <p id="peer-status" class="text-xs text-yellow-400 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-500 status-dot"></span> Подключение...</p>
+                        </div>
+                    </div>
+                    <button onclick="logout()" class="text-gray-400 hover:text-red-400 transition" title="Выйти"><i class="fas fa-sign-out-alt"></i></button>
+                </div>
+
+                <div class="p-4 border-b border-gray-700">
+                    <div class="relative">
+                        <input type="text" id="search-input" placeholder="Введите ID друга..." class="w-full bg-gray-900 text-sm px-4 py-2 rounded-lg outline-none border border-gray-700 focus:border-blue-500 transition" onkeydown="if(event.key==='Enter')searchUser()">
+                        <button onclick="searchUser()" class="absolute right-2 top-2 text-gray-400 hover:text-white"><i class="fas fa-search"></i></button>
+                    </div>
+                </div>
+
+                <div id="chats-list" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+            </div>
+
+            <!-- Chat Area -->
+            <div class="flex-1 flex flex-col bg-gray-900 relative">
+                <div id="chat-header" class="h-16 border-b border-gray-700 flex items-center justify-between px-6 bg-gray-800 hidden">
+                    <div class="flex items-center gap-3">
+                        <img id="active-chat-avatar" src="" class="w-10 h-10 rounded-full bg-gray-600 object-cover">
+                        <div>
+                            <h3 id="active-chat-nick" class="font-bold">Nickname</h3>
+                            <p id="active-chat-id" class="text-xs text-gray-400">ID: 000000</p>
+                        </div>
+                    </div>
+                    <div id="call-buttons" class="flex gap-3">
+                        <button onclick="startCall(false)" class="text-gray-400 hover:text-green-400 transition transform hover:scale-110" title="Аудиозвонок"><i class="fas fa-phone text-xl"></i></button>
+                        <button onclick="startCall(true)" class="text-gray-400 hover:text-green-400 transition transform hover:scale-110" title="Видеозвонок"><i class="fas fa-video text-xl"></i></button>
+                    </div>
+                </div>
+
+                <div id="welcome-placeholder" class="flex-1 flex flex-col items-center justify-center text-gray-600">
+                    <i class="fas fa-comments text-6xl mb-4 text-gray-700"></i>
+                    <p class="text-lg">Введите ID друга в поиск</p>
+                    <p class="text-sm mt-2 text-gray-500">чтобы начать общение</p>
+                </div>
+
+                <div id="messages-area" class="flex-1 overflow-y-auto p-6 space-y-4 hidden"></div>
+
+                <div id="input-area" class="p-4 bg-gray-800 border-t border-gray-700 hidden relative">
+                    <div id="emoji-picker" class="absolute bottom-20 left-4 bg-gray-800 border border-gray-600 rounded-lg shadow-xl p-2 grid grid-cols-6 gap-2 hidden w-64 h-48 overflow-y-auto z-10"></div>
+                    <form onsubmit="sendMessage(event)" class="flex gap-2 items-center">
+                        <button type="button" onclick="toggleEmoji()" class="text-gray-400 hover:text-yellow-400 text-xl px-2 transition"><i class="far fa-smile"></i></button>
+                        <input type="text" id="message-input" class="flex-1 bg-gray-900 border border-gray-600 rounded-full px-4 py-2 outline-none focus:border-blue-500 transition" placeholder="Напишите сообщение..." autocomplete="off">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white rounded-full w-10 h-10 flex items-center justify-center transition transform active:scale-90"><i class="fas fa-paper-plane"></i></button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- PROFILE MODAL -->
+        <div id="profile-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+            <div class="bg-gray-800 p-8 rounded-2xl w-full max-w-md border border-gray-600 shadow-2xl relative">
+                <button onclick="toggleProfileModal(false)" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+                <h2 class="text-2xl font-bold mb-6 text-center">Профиль</h2>
+                
+                <div class="flex flex-col items-center mb-6">
+                    <img id="profile-edit-avatar" src="" class="w-24 h-24 rounded-full bg-gray-700 object-cover mb-4 border-4 border-blue-500">
+                    <div class="bg-gray-900 px-4 py-2 rounded-lg border border-gray-700">
+                        <span class="text-gray-400 text-xs uppercase mr-2">Ваш ID:</span>
+                        <span id="profile-edit-id" class="text-xl font-mono text-blue-400 font-bold select-all cursor-pointer" onclick="copyId()">000000</span>
+                    </div>
+                    <div id="copy-toast" class="text-green-500 text-xs mt-1 h-4 opacity-0 transition">ID скопирован!</div>
+                    <p class="text-yellow-500 text-xs mt-2 text-center"><b>Отправь этот ID другу чтобы он мог тебе позвонить!</b></p>
+                </div>
+
+                <form onsubmit="saveProfile(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Никнейм</label>
+                        <input type="text" id="edit-nick" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:border-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Ссылка на аватарку</label>
+                        <input type="text" id="edit-avatar-url" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:border-blue-500 outline-none" placeholder="https://example.com/image.jpg">
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 py-2 rounded-lg font-bold transition">Сохранить</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- INCOMING CALL MODAL -->
+        <div id="incoming-call-modal" class="fixed inset-0 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 z-50 flex flex-col items-center justify-center hidden">
+            <div class="absolute inset-0 bg-black/50"></div>
+            <div class="relative z-10 flex flex-col items-center">
+                <div class="call-pulse relative flex items-center justify-center w-32 h-32 rounded-full bg-gray-700 mb-6 overflow-hidden border-4 border-green-500 ring-glow">
+                    <img id="incoming-call-avatar" src="" class="w-full h-full object-cover">
+                </div>
+                <h2 id="incoming-call-name" class="text-3xl font-bold mb-2 text-white">Nickname</h2>
+                <p id="incoming-call-type" class="text-green-400 animate-pulse mb-2 font-mono text-lg">Входящий звонок...</p>
+                <div class="flex gap-12 items-center mt-8">
+                    <div class="flex flex-col items-center">
+                        <button onclick="declineCall()" class="w-20 h-20 rounded-full bg-red-600 hover:bg-red-500 text-white text-3xl flex items-center justify-center transition shadow-lg shadow-red-600/50 hover:scale-110">
+                            <i class="fas fa-phone-slash"></i>
+                        </button>
+                        <span class="text-gray-400 text-sm mt-3">Отклонить</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <button onclick="answerCall()" class="w-20 h-20 rounded-full bg-green-500 hover:bg-green-400 text-white text-3xl flex items-center justify-center transition shadow-lg shadow-green-500/50 shake-animation hover:scale-110">
+                            <i class="fas fa-phone"></i>
+                        </button>
+                        <span class="text-gray-400 text-sm mt-3">Ответить</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ACTIVE CALL MODAL -->
+        <div id="call-modal" class="fixed inset-0 bg-black z-50 hidden">
+            <video id="remote-video" class="absolute inset-0 w-full h-full object-contain bg-black" autoplay playsinline></video>
+            <video id="local-video" class="absolute bottom-28 right-4 w-36 h-48 bg-gray-800 rounded-xl border-2 border-white object-cover z-30 hidden" autoplay playsinline muted></video>
+            
+            <div id="call-notifications" class="absolute top-20 left-1/2 transform -translate-x-1/2 z-40 flex flex-col gap-2 items-center"></div>
+            
+            <div class="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-30 bg-gradient-to-b from-black/80 to-transparent">
+                <div id="call-timer" class="bg-black/50 px-4 py-2 rounded-full text-white font-mono text-lg hidden">
+                    <i class="fas fa-circle text-red-500 text-xs mr-2 animate-pulse"></i>
+                    <span id="call-timer-text">00:00</span>
+                </div>
+                
+                <div id="screen-share-container" class="hidden">
+                    <button id="view-screen-btn" class="bg-green-600 hover:bg-green-500 px-6 py-3 rounded-xl text-white font-bold shadow-lg shadow-green-600/50 animate-pulse flex items-center gap-2 transition transform hover:scale-105">
+                        <i class="fas fa-tv text-xl"></i>
+                        <span id="view-screen-text">Смотреть демонстрацию</span>
+                    </button>
+                </div>
+                
+                <div id="remote-status" class="flex gap-2">
+                    <div id="remote-muted" class="bg-red-600/90 px-3 py-1 rounded-full text-white text-sm hidden"><i class="fas fa-microphone-slash mr-1"></i> Микрофон выкл</div>
+                    <div id="remote-camera-off" class="bg-red-600/90 px-3 py-1 rounded-full text-white text-sm hidden"><i class="fas fa-video-slash mr-1"></i> Камера выкл</div>
+                    <div id="remote-screen-on" class="bg-green-600/90 px-3 py-1 rounded-full text-white text-sm hidden"><i class="fas fa-desktop mr-1"></i> Демонстрация</div>
+                </div>
+            </div>
+            
+            <div id="call-center-content" class="absolute inset-0 flex flex-col items-center justify-center z-20 pointer-events-none">
+                <div id="call-avatar-container" class="call-pulse relative flex items-center justify-center w-32 h-32 rounded-full bg-gray-700 mb-6 overflow-hidden border-4 border-blue-500 pointer-events-auto">
+                    <img id="call-avatar" src="" class="w-full h-full object-cover">
+                </div>
+                <h2 id="call-name" class="text-3xl font-bold mb-2 text-white drop-shadow-lg">Nickname</h2>
+                <p id="call-status" class="text-blue-400 animate-pulse mb-8 font-mono text-lg font-bold">Подключение...</p>
+                <div id="call-controls" class="flex gap-4 items-center hidden pointer-events-auto">
+                    <button id="btn-mute" onclick="toggleMute()" class="w-14 h-14 rounded-full bg-gray-700 hover:bg-gray-600 text-white text-xl flex items-center justify-center transition shadow-lg hover:scale-110" title="Микрофон"><i class="fas fa-microphone"></i></button>
+                    <button id="btn-camera" onclick="toggleCamera()" class="w-14 h-14 rounded-full bg-gray-700 hover:bg-gray-600 text-white text-xl flex items-center justify-center transition shadow-lg hover:scale-110" title="Камера"><i class="fas fa-video"></i></button>
+                    <button id="btn-volume" onclick="toggleVolume()" class="w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xl flex items-center justify-center transition shadow-lg hover:scale-110" title="Громкость"><i class="fas fa-volume-up"></i></button>
+                    <button id="btn-screen" onclick="toggleScreenShare()" class="w-14 h-14 rounded-full bg-gray-700 hover:bg-gray-600 text-white text-xl flex items-center justify-center transition shadow-lg hover:scale-110" title="Демонстрация экрана"><i class="fas fa-desktop"></i></button>
+                </div>
+            </div>
+            
+            <div class="absolute bottom-0 left-0 right-0 p-8 flex justify-center z-30 bg-gradient-to-t from-black/80 to-transparent">
+                <button onclick="endCall()" class="w-20 h-20 rounded-full bg-red-600 hover:bg-red-500 text-white text-3xl flex items-center justify-center transition shadow-lg shadow-red-600/50 hover:scale-110">
+                    <i class="fas fa-phone-slash"></i>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <audio id="ringtone" loop>
+        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // ===== STORAGE =====
+        const DB_USERS = 'scam_users_v3';
+        const DB_CHATS = 'scam_chats_v3';
+        const DB_SESSION = 'scam_session_v3';
+
+        // ===== STATE =====
+        let peer = null;
+        let currentPeerCall = null;
+        let dataConnection = null;
+        let localStream = null;
+        let currentUser = null;
+        let activeChatUserId = null;
+        let incomingCallData = null;
+        let callWithVideo = true;
+        
+        // Call controls
+        let isMuted = false;
+        let isCameraOff = false;
+        let isLoudVolume = true;
+        let isScreenSharing = false;
+        let screenStream = null;
+        let originalVideoTrack = null;
+        let callStartTime = null;
+        let callTimerInterval = null;
+        let remoteHasScreenShare = false;
+        let isWatchingScreenShare = false;
+
+        // ===== DATABASE =====
+        function getUsers() { return JSON.parse(localStorage.getItem(DB_USERS) || '[]'); }
+        function saveUsers(users) { localStorage.setItem(DB_USERS, JSON.stringify(users)); }
+        function getChats() { return JSON.parse(localStorage.getItem(DB_CHATS) || '{}'); }
+        function saveChats(chats) { localStorage.setItem(DB_CHATS, JSON.stringify(chats)); }
+        function findUserById(id) { return getUsers().find(u => u.id === id); }
+
+        // ===== INIT =====
+        function init() {
+            const userId = localStorage.getItem(DB_SESSION);
+            if (userId) {
+                const user = findUserById(userId);
+                if (user) { 
+                    currentUser = user;
+                    initPeer(user.id);
+                    showMessenger();
+                    return;
+                }
+            }
+            showAuth();
+        }
+
+        function showAuth() {
+            document.getElementById('auth-screen').classList.remove('hidden-important');
+            document.getElementById('messenger-screen').classList.add('hidden-important');
+        }
+
+        function showMessenger() {
+            document.getElementById('auth-screen').classList.add('hidden-important');
+            document.getElementById('messenger-screen').classList.remove('hidden-important');
+            document.getElementById('current-user-nick').textContent = currentUser.nickname;
+            document.getElementById('current-user-avatar').src = currentUser.avatar;
+            renderChatList();
+        }
+
+        function switchAuthMode(mode) {
+            document.getElementById('auth-error').classList.add('hidden');
+            if (mode === 'login') {
+                document.getElementById('login-form').classList.remove('hidden-important');
+                document.getElementById('register-form').classList.add('hidden-important');
+                document.getElementById('tab-login').className = 'flex-1 py-2 rounded-md text-sm font-medium transition-colors bg-gray-600 text-white';
+                document.getElementById('tab-register').className = 'flex-1 py-2 rounded-md text-sm font-medium transition-colors text-gray-400 hover:text-white';
+            } else {
+                document.getElementById('login-form').classList.add('hidden-important');
+                document.getElementById('register-form').classList.remove('hidden-important');
+                document.getElementById('tab-register').className = 'flex-1 py-2 rounded-md text-sm font-medium transition-colors bg-gray-600 text-white';
+                document.getElementById('tab-login').className = 'flex-1 py-2 rounded-md text-sm font-medium transition-colors text-gray-400 hover:text-white';
+            }
+        }
+
+        function handleRegister(e) {
+            e.preventDefault();
+            const nick = document.getElementById('reg-nick').value.trim();
+            const pass = document.getElementById('reg-pass').value;
+            if (!nick || !pass) return;
+
+            const users = getUsers();
+            if (users.some(u => u.nickname.toLowerCase() === nick.toLowerCase())) {
+                alert("Этот никнейм уже занят!");
+                return;
+            }
+
+            let newId;
+            do { newId = Math.floor(100000 + Math.random() * 900000).toString(); } 
+            while (users.find(u => u.id === newId));
+
+            const newUser = {
+                id: newId,
+                nickname: nick,
+                password: pass,
+                avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${newId}`
+            };
+            
+            users.push(newUser);
+            saveUsers(users);
+            localStorage.setItem(DB_SESSION, newId);
+            
+            alert(`Аккаунт создан!\n\nВаш ID: ${newId}\n\nОтправьте этот ID друзьям чтобы они могли вам позвонить!`);
+            
+            currentUser = newUser;
+            initPeer(newId);
+            showMessenger();
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const nick = document.getElementById('login-nick').value.trim();
+            const pass = document.getElementById('login-pass').value;
+            
+            const users = getUsers();
+            const user = users.find(u => u.nickname.toLowerCase() === nick.toLowerCase() && u.password === pass);
+            
+            if (user) {
+                localStorage.setItem(DB_SESSION, user.id);
+                currentUser = user;
+                initPeer(user.id);
+                showMessenger();
+            } else {
+                document.getElementById('auth-error').textContent = "Неверный никнейм или пароль";
+                document.getElementById('auth-error').classList.remove('hidden');
+            }
+        }
+
+        function logout() {
+            if (peer) peer.destroy();
+            localStorage.removeItem(DB_SESSION);
+            location.reload();
+        }
+
+        // ===== SEARCH & CHAT =====
+        function searchUser() {
+            const query = document.getElementById('search-input').value.trim();
+            if (!query) return;
+            if (query === currentUser.id) { alert("Это ваш ID!"); return; }
+            
+            // Создаём пользователя если не существует
+            let users = getUsers();
+            let targetUser = users.find(u => u.id === query);
+            
+            if (!targetUser) {
+                targetUser = {
+                    id: query,
+                    nickname: 'Пользователь ' + query,
+                    avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${query}`
+                };
+                users.push(targetUser);
+                saveUsers(users);
+            }
+            
+            openChat(query);
+            document.getElementById('search-input').value = '';
+        }
+
+        function renderChatList() {
+            const list = document.getElementById('chats-list');
+            list.innerHTML = '';
+            
+            const chats = getChats();
+            const users = getUsers();
+            
+            const myChats = Object.keys(chats).filter(key => key.includes(currentUser.id));
+            
+            myChats.forEach(chatKey => {
+                const otherId = chatKey.split('-').find(id => id !== currentUser.id);
+                const otherUser = users.find(u => u.id === otherId);
+                if (!otherUser) return;
+
+                const messages = chats[chatKey];
+                const lastMsg = messages[messages.length - 1];
+                let displayMsg = lastMsg ? lastMsg.text : 'Нет сообщений';
+                if (displayMsg.length > 25) displayMsg = displayMsg.substring(0, 25) + '...';
+
+                const div = document.createElement('div');
+                div.className = `p-3 rounded-lg cursor-pointer flex items-center gap-3 transition ${activeChatUserId === otherId ? 'bg-blue-600/20 border border-blue-600/30' : 'hover:bg-gray-700'}`;
+                div.onclick = () => openChat(otherId);
+                div.innerHTML = `
+                    <img src="${otherUser.avatar}" class="w-10 h-10 rounded-full bg-gray-600 object-cover">
+                    <div class="flex-1 overflow-hidden">
+                        <h4 class="font-bold text-sm text-gray-200">${otherUser.nickname}</h4>
+                        <p class="text-xs text-gray-400 truncate">${displayMsg}</p>
+                    </div>`;
+                list.appendChild(div);
+            });
+        }
+
+        function openChat(userId) {
+            activeChatUserId = userId;
+            
+            document.getElementById('welcome-placeholder').classList.add('hidden');
+            document.getElementById('chat-header').classList.remove('hidden');
+            document.getElementById('chat-header').classList.add('flex');
+            document.getElementById('messages-area').classList.remove('hidden');
+            document.getElementById('input-area').classList.remove('hidden');
+            document.getElementById('call-buttons').classList.remove('hidden');
+
+            const targetUser = findUserById(userId) || { nickname: 'Пользователь ' + userId, avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${userId}` };
+            document.getElementById('active-chat-avatar').src = targetUser.avatar;
+            document.getElementById('active-chat-nick').textContent = targetUser.nickname;
+            document.getElementById('active-chat-id').textContent = `ID: ${userId}`;
+
+            renderMessages();
+            renderChatList();
+        }
+
+        function renderMessages() {
+            if (!activeChatUserId) return;
+            const msgArea = document.getElementById('messages-area');
+            msgArea.innerHTML = '';
+
+            const chatKey = [currentUser.id, activeChatUserId].sort().join('-');
+            const chats = getChats();
+            const messages = chats[chatKey] || [];
+
+            messages.forEach(msg => {
+                const isMe = msg.sender === currentUser.id;
+                const div = document.createElement('div');
+                div.className = `flex ${isMe ? 'justify-end' : 'justify-start'}`;
+                div.innerHTML = `<div class="chat-bubble px-4 py-2 rounded-2xl text-sm ${isMe ? 'bg-blue-600 text-white rounded-br-none' : 'bg-gray-700 text-gray-200 rounded-bl-none'}">${msg.text}<div class="text-[10px] ${isMe ? 'text-blue-200' : 'text-gray-400'} text-right mt-1">${new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div></div>`;
+                msgArea.appendChild(div);
+            });
+            
+            msgArea.scrollTop = msgArea.scrollHeight;
+        }
+
+        function sendMessage(e) {
+            e.preventDefault();
+            const input = document.getElementById('message-input');
+            const text = input.value.trim();
+            if (!text || !activeChatUserId) return;
+
+            const chatKey = [currentUser.id, activeChatUserId].sort().join('-');
+            const chats = getChats();
+            if (!chats[chatKey]) chats[chatKey] = [];
+            
+            chats[chatKey].push({ sender: currentUser.id, text, timestamp: Date.now() });
+            saveChats(chats);
+            
+            input.value = '';
+            document.getElementById('emoji-picker').classList.add('hidden');
+            renderMessages();
+            renderChatList();
+        }
+
+        // ===== EMOJI =====
+        const emojis = ["😀","😂","😍","😎","😭","😡","👍","👎","🔥","❤️","💩","🤡","👻","💀","👀","🚀","🎉","💯","✅","❌","👋","🙏","🤝","💪"];
+        function initEmojiPicker() {
+            const container = document.getElementById('emoji-picker');
+            emojis.forEach(emoji => {
+                const btn = document.createElement('button');
+                btn.textContent = emoji;
+                btn.className = "text-xl hover:bg-gray-700 rounded p-1 transition";
+                btn.type = "button";
+                btn.onclick = () => { document.getElementById('message-input').value += emoji; };
+                container.appendChild(btn);
+            });
+        }
+        function toggleEmoji() { document.getElementById('emoji-picker').classList.toggle('hidden'); }
+
+        // ===== PROFILE =====
+        function toggleProfileModal(show) {
+            const modal = document.getElementById('profile-modal');
+            if (show) {
+                modal.classList.remove('hidden');
+                document.getElementById('edit-nick').value = currentUser.nickname;
+                document.getElementById('edit-avatar-url').value = currentUser.avatar;
+                document.getElementById('profile-edit-avatar').src = currentUser.avatar;
+                document.getElementById('profile-edit-id').textContent = currentUser.id;
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function copyId() {
+            navigator.clipboard.writeText(currentUser.id).then(() => {
+                const toast = document.getElementById('copy-toast');
+                toast.classList.remove('opacity-0');
+                setTimeout(() => toast.classList.add('opacity-0'), 2000);
+            });
+        }
+
+        function saveProfile(e) {
+            e.preventDefault();
+            const newNick = document.getElementById('edit-nick').value.trim();
+            const newAvatar = document.getElementById('edit-avatar-url').value.trim();
+            if (!newNick) return;
+
+            const users = getUsers();
+            if (users.find(u => u.nickname.toLowerCase() === newNick.toLowerCase() && u.id !== currentUser.id)) {
+                alert("Этот никнейм уже занят!");
+                return;
+            }
+
+            currentUser.nickname = newNick;
+            if (newAvatar) currentUser.avatar = newAvatar;
+            
+            const idx = users.findIndex(u => u.id === currentUser.id);
+            if (idx >= 0) users[idx] = currentUser;
+            saveUsers(users);
+
+            document.getElementById('current-user-nick').textContent = currentUser.nickname;
+            document.getElementById('current-user-avatar').src = currentUser.avatar;
+            toggleProfileModal(false);
+            renderChatList();
+        }
+
+        // ===== PEERJS =====
+        function initPeer(userId) {
+            const peerId = 'scam_v30_' + userId;
+            
+            peer = new Peer(peerId, {
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' }
+                    ]
+                }
+            });
+
+            peer.on('open', () => {
+                console.log('PeerJS connected');
+                document.getElementById('peer-status').innerHTML = '<span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Онлайн';
+                document.getElementById('peer-status').className = 'text-xs text-green-400 flex items-center gap-1';
+            });
+
+            peer.on('call', (call) => {
+                const callerId = call.peer.replace('scam_v30_', '');
+                let caller = findUserById(callerId);
+                if (!caller) caller = { id: callerId, nickname: 'Пользователь ' + callerId, avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${callerId}` };
+                
+                incomingCallData = { call, caller };
+                callWithVideo = call.metadata?.withVideo;
+                showIncomingCall(caller);
+            });
+
+            peer.on('connection', (conn) => {
+                dataConnection = conn;
+                conn.on('data', handleRemoteStatus);
+            });
+
+            peer.on('error', (err) => {
+                console.error('PeerJS error:', err);
+                document.getElementById('peer-status').innerHTML = '<span class="w-2 h-2 rounded-full bg-red-500"></span> Ошибка';
+                document.getElementById('peer-status').className = 'text-xs text-red-400 flex items-center gap-1';
+                
+                if (err.type === 'peer-unavailable') {
+                    showCallNotification('Пользователь не в сети', 'error');
+                    setTimeout(endCall, 2000);
+                }
+            });
+
+            peer.on('disconnected', () => {
+                document.getElementById('peer-status').innerHTML = '<span class="w-2 h-2 rounded-full bg-yellow-500 status-dot"></span> Переподключение...';
+                peer.reconnect();
+            });
+        }
+
+        function sendStatus(type, value) {
+            if (dataConnection && dataConnection.open) {
+                dataConnection.send({ type, value, from: currentUser.nickname });
+            }
+        }
+
+        function handleRemoteStatus(data) {
+            if (data.type === 'mute') {
+                document.getElementById('remote-muted').classList.toggle('hidden', !data.value);
+                showCallNotification(`${data.from} ${data.value ? 'выключил' : 'включил'} микрофон`, data.value ? 'warning' : 'success');
+            }
+            if (data.type === 'camera') {
+                document.getElementById('remote-camera-off').classList.toggle('hidden', !data.value);
+                showCallNotification(`${data.from} ${data.value ? 'выключил' : 'включил'} камеру`, data.value ? 'warning' : 'success');
+            }
+            if (data.type === 'screen') {
+                remoteHasScreenShare = data.value;
+                document.getElementById('remote-screen-on').classList.toggle('hidden', !data.value);
+                document.getElementById('screen-share-container').classList.toggle('hidden', !data.value);
+                
+                if (data.value) {
+                    showCallNotification(`${data.from} показывает экран!`, 'success');
+                } else {
+                    if (isWatchingScreenShare) exitScreenShareView();
+                    showCallNotification(`${data.from} остановил демонстрацию`, 'info');
+                }
+            }
+        }
+
+        function showCallNotification(text, type = 'info') {
+            const container = document.getElementById('call-notifications');
+            const notification = document.createElement('div');
+            const colors = { info: 'bg-blue-600', success: 'bg-green-600', warning: 'bg-yellow-600', error: 'bg-red-600' };
+            notification.className = `${colors[type]} px-4 py-2 rounded-full text-white text-sm shadow-lg notification-slide`;
+            notification.textContent = text;
+            container.appendChild(notification);
+            setTimeout(() => { notification.classList.add('notification-fadeout'); setTimeout(() => notification.remove(), 500); }, 3000);
+        }
+
+        // ===== SCREEN SHARE VIEW =====
+        function watchScreenShare() {
+            if (!remoteHasScreenShare) return;
+            isWatchingScreenShare = true;
+            
+            document.getElementById('call-center-content').style.opacity = '0';
+            document.getElementById('call-center-content').style.pointerEvents = 'none';
+            
+            const remoteVideo = document.getElementById('remote-video');
+            remoteVideo.classList.add('screen-share-border');
+            remoteVideo.style.display = 'block';
+            remoteVideo.play();
+            
+            document.getElementById('view-screen-btn').className = 'bg-yellow-600 hover:bg-yellow-500 px-6 py-3 rounded-xl text-white font-bold shadow-lg flex items-center gap-2 transition transform hover:scale-105';
+            document.getElementById('view-screen-text').textContent = 'Свернуть';
+        }
+
+        function exitScreenShareView() {
+            isWatchingScreenShare = false;
+            
+            document.getElementById('call-center-content').style.opacity = '1';
+            document.getElementById('call-center-content').style.pointerEvents = 'auto';
+            
+            const remoteVideo = document.getElementById('remote-video');
+            remoteVideo.classList.remove('screen-share-border');
+            if (!callWithVideo) remoteVideo.style.display = 'none';
+            
+            if (remoteHasScreenShare) {
+                document.getElementById('view-screen-btn').className = 'bg-green-600 hover:bg-green-500 px-6 py-3 rounded-xl text-white font-bold shadow-lg shadow-green-600/50 animate-pulse flex items-center gap-2 transition transform hover:scale-105';
+                document.getElementById('view-screen-text').textContent = 'Смотреть демонстрацию';
+            }
+        }
+
+        function toggleWatchScreen() {
+            if (isWatchingScreenShare) exitScreenShareView();
+            else watchScreenShare();
+        }
+
+        // ===== CALLS =====
+        function showIncomingCall(caller) {
+            try { document.getElementById('ringtone').play(); } catch(e) {}
+            document.getElementById('incoming-call-modal').classList.remove('hidden');
+            document.getElementById('incoming-call-avatar').src = caller.avatar;
+            document.getElementById('incoming-call-name').textContent = caller.nickname;
+            document.getElementById('incoming-call-type').textContent = callWithVideo ? 'Видеозвонок...' : 'Аудиозвонок...';
+        }
+
+        async function startCall(withVideo) {
+            if (!activeChatUserId) { alert("Выберите пользователя для звонка!"); return; }
+            if (!peer || peer.disconnected) { alert("Ошибка подключения. Перезагрузите страницу."); return; }
+            
+            callWithVideo = withVideo;
+            const targetUser = findUserById(activeChatUserId) || { nickname: 'Пользователь', avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${activeChatUserId}` };
+
+            document.getElementById('call-modal').classList.remove('hidden');
+            document.getElementById('call-avatar').src = targetUser.avatar;
+            document.getElementById('call-name').textContent = targetUser.nickname;
+            document.getElementById('call-status').textContent = 'Запрос камеры...';
+            document.getElementById('call-status').className = 'text-yellow-400 animate-pulse mb-8 font-mono text-lg font-bold';
+            document.getElementById('call-avatar-container').style.display = 'flex';
+            document.getElementById('call-center-content').style.opacity = '1';
+            document.getElementById('remote-video').style.display = 'none';
+
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                if (!withVideo) localStream.getVideoTracks().forEach(track => track.enabled = false);
+                
+                document.getElementById('local-video').srcObject = localStream;
+                if (withVideo) document.getElementById('local-video').classList.remove('hidden');
+
+                document.getElementById('call-status').textContent = 'Звоним...';
+                document.getElementById('call-status').className = 'text-blue-400 animate-pulse mb-8 font-mono text-lg font-bold';
+
+                const targetPeerId = 'scam_v30_' + activeChatUserId;
+                dataConnection = peer.connect(targetPeerId);
+                dataConnection.on('data', handleRemoteStatus);
+                
+                currentPeerCall = peer.call(targetPeerId, localStream, { metadata: { withVideo } });
+                setupCallHandlers(currentPeerCall);
+
+            } catch (err) {
+                console.error('Call error:', err);
+                alert("Ошибка: " + err.message);
+                endCall();
+            }
+        }
+
+        async function answerCall() {
+            if (!incomingCallData) return;
+            stopRingtone();
+
+            document.getElementById('incoming-call-modal').classList.add('hidden');
+            document.getElementById('call-modal').classList.remove('hidden');
+
+            const caller = incomingCallData.caller;
+            document.getElementById('call-avatar').src = caller.avatar;
+            document.getElementById('call-name').textContent = caller.nickname;
+            document.getElementById('call-status').textContent = 'Подключение...';
+            document.getElementById('call-avatar-container').style.display = 'flex';
+            document.getElementById('call-center-content').style.opacity = '1';
+            document.getElementById('remote-video').style.display = 'none';
+
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                if (!callWithVideo) localStream.getVideoTracks().forEach(track => track.enabled = false);
+                
+                document.getElementById('local-video').srcObject = localStream;
+                if (callWithVideo) document.getElementById('local-video').classList.remove('hidden');
+
+                const callerId = incomingCallData.call.peer.replace('scam_v30_', '');
+                dataConnection = peer.connect('scam_v30_' + callerId);
+                dataConnection.on('data', handleRemoteStatus);
+
+                incomingCallData.call.answer(localStream);
+                currentPeerCall = incomingCallData.call;
+                setupCallHandlers(currentPeerCall);
+
+            } catch (err) {
+                console.error('Answer error:', err);
+                alert("Ошибка: " + err.message);
+                endCall();
+            }
+        }
+
+        function setupCallHandlers(call) {
+            call.on('stream', (remoteStream) => {
+                console.log('Got remote stream!');
+                const remoteVideo = document.getElementById('remote-video');
+                remoteVideo.srcObject = remoteStream;
+                
+                document.getElementById('call-status').textContent = 'Соединено';
+                document.getElementById('call-status').className = 'text-green-400 mb-8 font-mono text-lg font-bold';
+                document.getElementById('call-controls').classList.remove('hidden');
+                
+                startCallTimer();
+                
+                if (callWithVideo) {
+                    remoteVideo.style.display = 'block';
+                    document.getElementById('call-avatar-container').style.display = 'none';
+                }
+            });
+
+            call.on('close', () => { console.log('Call closed'); endCall(); });
+            call.on('error', (err) => { console.error('Call error:', err); endCall(); });
+        }
+
+        function declineCall() {
+            stopRingtone();
+            if (incomingCallData?.call) incomingCallData.call.close();
+            incomingCallData = null;
+            document.getElementById('incoming-call-modal').classList.add('hidden');
+        }
+
+        function endCall() {
+            stopRingtone();
+            stopCallTimer();
+            resetCallControls();
+
+            if (currentPeerCall) { currentPeerCall.close(); currentPeerCall = null; }
+            if (dataConnection) { dataConnection.close(); dataConnection = null; }
+            if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
+
+            incomingCallData = null;
+            
+            document.getElementById('call-modal').classList.add('hidden');
+            document.getElementById('incoming-call-modal').classList.add('hidden');
+            document.getElementById('remote-video').style.display = 'none';
+            document.getElementById('remote-video').classList.remove('screen-share-border');
+            document.getElementById('remote-video').srcObject = null;
+            document.getElementById('local-video').classList.add('hidden');
+            document.getElementById('local-video').srcObject = null;
+            document.getElementById('call-avatar-container').style.display = 'flex';
+            document.getElementById('call-center-content').style.opacity = '1';
+        }
+
+        function stopRingtone() {
+            try { 
+                const ringtone = document.getElementById('ringtone'); 
+                ringtone.pause(); 
+                ringtone.currentTime = 0; 
+            } catch(e) {}
+        }
+
+        // ===== CALL CONTROLS =====
+        function startCallTimer() {
+            callStartTime = Date.now();
+            document.getElementById('call-timer').classList.remove('hidden');
+            callTimerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+                const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+                const seconds = (elapsed % 60).toString().padStart(2, '0');
+                document.getElementById('call-timer-text').textContent = `${minutes}:${seconds}`;
+            }, 1000);
+        }
+
+        function stopCallTimer() {
+            if (callTimerInterval) { clearInterval(callTimerInterval); callTimerInterval = null; }
+            document.getElementById('call-timer').classList.add('hidden');
+        }
+
+        function toggleMute() {
+            if (!localStream) return;
+            const audioTrack = localStream.getAudioTracks()[0];
+            if (audioTrack) {
+                isMuted = !isMuted;
+                audioTrack.enabled = !isMuted;
+                sendStatus('mute', isMuted);
+                const btn = document.getElementById('btn-mute');
+                btn.innerHTML = isMuted ? '<i class="fas fa-microphone-slash"></i>' : '<i class="fas fa-microphone"></i>';
+                btn.className = `w-14 h-14 rounded-full ${isMuted ? 'bg-red-600 hover:bg-red-500' : 'bg-gray-700 hover:bg-gray-600'} text-white text-xl flex items-center justify-center transition shadow-lg hover:scale-110`;
+            }
+        }
+
+        function toggleCamera() {
+            if (!localStream) return;
+            const videoTrack = localStream.getVideoTracks()[0];
+            if (videoTrack) {
+                isCameraOff = !isCameraOff;
+                videoTrack.enabled = !isCameraOff;
+                sendStatus('camera', isCameraOff);
+                const btn = document.getElementById('btn-camera');
+                btn.innerHTML = isCameraOff ? '<i class="fas fa-video-slash"></i>' : '<i class="fas fa-video"></i>';
+                btn.className = `w-14 h-14 rounded-full ${isCameraOff ? 'bg-red-600 hover:bg-red-500' : 'bg-gray-700 hover:bg-gray-600'} text-white text-xl flex items-center justify-center transition shadow-lg hover:scale-110`;
+                document.getElementById('local-video').classList.toggle('opacity-50', isCameraOff);
+            }
+        }
+
+        function toggleVolume() {
+            const remoteVideo = document.getElementById('remote-video');
+            isLoudVolume = !isLoudVolume;
+            remoteVideo.volume = isLoudVolume ? 1.0 : 0.3;
+            const btn = document.getElementById('btn-volume');
+            btn.innerHTML = isLoudVolume ? '<i class="fas fa-volume-up"></i>' : '<i class="fas fa-volume-down"></i>';
+            btn.className = `w-14 h-14 rounded-full ${isLoudVolume ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-700 hover:bg-gray-600'} text-white text-xl flex items-center justify-center transition shadow-lg hover:scale-110`;
+        }
+
+        async function toggleScreenShare() {
+            if (!currentPeerCall || !localStream) return;
+            
+            if (!isScreenSharing) {
+                try {
+                    screenStream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: false });
+                    const screenTrack = screenStream.getVideoTracks()[0];
+                    originalVideoTrack = localStream.getVideoTracks()[0];
+                    
+                    const sender = currentPeerCall.peerConnection.getSenders().find(s => s.track?.kind === 'video');
+                    if (sender) await sender.replaceTrack(screenTrack);
+                    
+                    document.getElementById('local-video').srcObject = screenStream;
+                    document.getElementById('local-video').classList.remove('hidden');
+                    
+                    isScreenSharing = true;
+                    sendStatus('screen', true);
+                    
+                    document.getElementById('btn-screen').className = 'w-14 h-14 rounded-full bg-green-600 hover:bg-green-500 text-white text-xl flex items-center justify-center transition shadow-lg hover:scale-110';
+                    
+                    screenTrack.onended = () => stopScreenShare();
+                    
+                } catch (err) {
+                    console.error('Screen share error:', err);
+                }
+            } else {
+                stopScreenShare();
+            }
+        }
+
+        async function stopScreenShare() {
+            if (!isScreenSharing) return;
+            
+            try {
+                if (originalVideoTrack && currentPeerCall) {
+                    const sender = currentPeerCall.peerConnection.getSenders().find(s => s.track?.kind === 'video');
+                    if (sender) await sender.replaceTrack(originalVideoTrack);
+                }
+                
+                if (screenStream) { screenStream.getTracks().forEach(track => track.stop()); screenStream = null; }
+                
+                document.getElementById('local-video').srcObject = localStream;
+                if (!callWithVideo) document.getElementById('local-video').classList.add('hidden');
+                
+                isScreenSharing = false;
+                sendStatus('screen', false);
+                
+                document.getElementById('btn-screen').className = 'w-14 h-14 rounded-full bg-gray-700 hover:bg-gray-600 text-white text-xl flex items-center justify-center transition shadow-lg hover:scale-110';
+                
+            } catch (err) { console.error('Stop screen share error:', err); }
+        }
+
+        function resetCallControls() {
+            isMuted = false;
+            isCameraOff = false;
+            isLoudVolume = true;
+            isScreenSharing = false;
+            isWatchingScreenShare = false;
+            remoteHasScreenShare = false;
+            
+            document.getElementById('btn-mute').innerHTML = '<i class="fas fa-microphone"></i>';
+            document.getElementById('btn-mute').className = 'w-14 h-14 rounded-full bg-gray-700 hover:bg-gray-600 text-white text-xl flex items-center justify-center transition shadow-lg hover:scale-110';
+            document.getElementById('btn-camera').innerHTML = '<i class="fas fa-video"></i>';
+            document.getElementById('btn-camera').className = 'w-14 h-14 rounded-full bg-gray-700 hover:bg-gray-600 text-white text-xl flex items-center justify-center transition shadow-lg hover:scale-110';
+            document.getElementById('btn-volume').innerHTML = '<i class="fas fa-volume-up"></i>';
+            document.getElementById('btn-volume').className = 'w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xl flex items-center justify-center transition shadow-lg hover:scale-110';
+            document.getElementById('btn-screen').className = 'w-14 h-14 rounded-full bg-gray-700 hover:bg-gray-600 text-white text-xl flex items-center justify-center transition shadow-lg hover:scale-110';
+            
+            document.getElementById('call-controls').classList.add('hidden');
+            document.getElementById('remote-muted').classList.add('hidden');
+            document.getElementById('remote-camera-off').classList.add('hidden');
+            document.getElementById('remote-screen-on').classList.add('hidden');
+            document.getElementById('screen-share-container').classList.add('hidden');
+            document.getElementById('call-notifications').innerHTML = '';
+            
+            document.getElementById('view-screen-btn').className = 'bg-green-600 hover:bg-green-500 px-6 py-3 rounded-xl text-white font-bold shadow-lg shadow-green-600/50 animate-pulse flex items-center gap-2 transition transform hover:scale-105';
+            document.getElementById('view-screen-text').textContent = 'Смотреть демонстрацию';
+            
+            if (screenStream) { screenStream.getTracks().forEach(track => track.stop()); screenStream = null; }
+            originalVideoTrack = null;
+        }
+
+        // ===== INIT =====
+        initEmojiPicker();
+        init();
+        
+        // Bind screen share button
+        document.getElementById('view-screen-btn').onclick = toggleWatchScreen;
+    </script>
+</body>
+</html>
